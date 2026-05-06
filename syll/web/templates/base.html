@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Lynx Memory Dashboard{% endblock %}</title>
+
+    <!-- CDN Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cal-heatmap@4"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cal-heatmap@4/cal-heatmap.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>🐾 Lynx Memory Dashboard</h1>
+                    <p class="subtitle">Multi-Agent Activity Monitor</p>
+                </div>
+                <a href="/" style="color: var(--accent-green); text-decoration: none; font-weight: 500; font-size: 1rem;">
+                    ← Back to Chat
+                </a>
+            </div>
+        </header>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer>
+            <p>Powered by Syll • <a href="/api/v1/dashboard/stats">API</a></p>
+        </footer>
+    </div>
+
+    <!-- Custom Scripts -->
+    <script src="/static/dashboard.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

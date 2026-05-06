@@ -1,0 +1,51 @@
+.assets
+.env
+
+# Python artifacts
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzz
+__pycache__/
+*.egg-info/
+*.egg
+.venv/
+dist/
+build/
+poetry.lock
+.pytest_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+
+# --- Added in Phase 0.2 for release prep ---
+# Prevents untracked side-projects and private data from being captured
+# by the WIP snapshot's `git add -A` in Phase 0.3. Tracked paths are not
+# affected by these rules; they remain in HEAD and are cleaned by Phase 1.
+
+# Adjacent research projects (kept on local disk under the main worktree, never shipped)
+/clawd-on-desk
+/OpenClawVL
+/ShowUI-Aloha
+/UI-TARS-desktop
+/study
+/claude-code
+
+# Orphan root-level workspace (authoritative template tree lives at nanobot/templates/workspace/)
+/workspace
+
+# Local Claude Code state
+.claude/
+
+# Personal dev notes (untracked, never ship, kept locally on main worktree)
+/plan1.md
+/ALOHA_INTEGRATION_REVIEW.md
+/GUI_DEMO_EXECUTION_ANALYSIS.md
+
+# Local source media dropped at repo root; optimized public assets live under docs/media/
+/*.mp4
+/image.png

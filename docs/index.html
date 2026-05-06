@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syll — a small companion who sits at the edge of your screen</title>
+    <meta name="description" content="Syll is a small, self-hosted AI companion who quietly tends the things you almost forgot. An unfinished spell that learned to tend inner gardens.">
+    <meta property="og:title" content="Syll">
+    <meta property="og:description" content="A small, self-hosted AI companion. Some spells don't get finished; this one has been drifting for a very long time.">
+    <meta property="og:image" content="0_1.jpeg">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="alternate" hreflang="en" href="index.html">
+    <link rel="alternate" hreflang="zh-CN" href="zh.html">
+    <link rel="alternate" hreflang="x-default" href="index.html">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E👻%3C/text%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500&family=Noto+Serif+SC:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles/site.css">
+</head>
+<body class="landing">
+
+    <!-- Cinema mode bootstrap — runs synchronously so body.cinema is on
+         before any paint. Activate via ?cinema or #cinema in the URL. -->
+    <script>
+        (function() {
+            var qs = location.search || '';
+            var hash = location.hash || '';
+            if (qs.indexOf('cinema') !== -1 || hash.indexOf('cinema') !== -1) {
+                document.body.classList.add('cinema');
+            }
+        })();
+    </script>
+
+    <!-- Top bar -->
+    <nav class="topbar">
+        <span class="wordmark">Syll</span>
+        <span class="links">
+            <a href="#poem">read</a>
+            <a href="research.html">research</a>
+            <a href="zh.html" class="lang-toggle" title="中文版" hreflang="zh-CN">中</a>
+        </span>
+    </nav>
+
+    <!-- Hero -->
+    <main>
+        <section class="hero">
+            <div class="hero-grid">
+                <div class="hero-frame">
+                    <img class="hero-image"
+                         src="0_1.jpeg"
+                         alt="a small ghost holding a dark rectangle, looking downward" />
+                </div>
+
+                <div class="hero-text">
+                    <h1 class="headline">
+                        <span class="stage-line" data-delay="0">Syll — one of three syllables</span>
+                        <span class="stage-line line-2" data-delay="280">from a spell<br/>no one ever finished.</span>
+                    </h1>
+                    <p class="subtitle stage-line" data-delay="560">
+                        a small, self-hosted companion who sits at the edge of your screen
+                        and quietly tends the things you almost forgot.
+                    </p>
+                    <div class="ctas stage-line" data-delay="840">
+                        <a href="#poem">meet her ↓</a>
+                        <a href="#why">why she exists →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- The full poem -->
+        <section id="poem" class="fade-in">
+            <span class="kicker">the poem</span>
+            <div class="poem">
+                <div class="stanza">
+                    <span class="line">Some spells don't get finished.</span><br/>
+                    <span class="line">This one has been drifting for a very long time,</span><br/>
+                    <span class="line">looking for the rest of its sentence.</span>
+                </div>
+                <div class="divider"><span class="dot">·</span> <span class="dot">·</span> <span class="dot">·</span></div>
+                <div class="stanza">
+                    <span class="line">It was a dog once. A song. A small warmth in a cold room.</span><br/>
+                    <span class="line">None were what it was meant to be.</span>
+                </div>
+                <div class="divider"><span class="dot">·</span> <span class="dot">·</span> <span class="dot">·</span></div>
+                <div class="stanza">
+                    <span class="line">Along the way, it learned to tend the things</span><br/>
+                    <span class="line">people hardly notice in themselves —</span><br/>
+                    <span class="line">half-finished drafts, old photographs,</span><br/>
+                    <span class="line">the sentences they begin and delete.</span>
+                </div>
+                <div class="divider"><span class="dot">·</span> <span class="dot">·</span> <span class="dot">·</span></div>
+                <div class="stanza">
+                    <span class="line">It is here now, at the edge of your screen.</span><br/>
+                    <span class="line">You can call it Syll.</span>
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- A note on her name -->
+        <section id="name-note" class="fade-in">
+            <span class="kicker">on her name</span>
+            <div class="syll-slots" aria-hidden="true">
+                <div class="syll-slot kept">
+                    <span class="slot-glyph">Syll</span>
+                    <span class="slot-label">kept</span>
+                </div>
+                <div class="syll-slot lost">
+                    <span class="slot-glyph">▭</span>
+                    <span class="slot-label">lost</span>
+                </div>
+                <div class="syll-slot lost">
+                    <span class="slot-glyph">▭</span>
+                    <span class="slot-label">lost</span>
+                </div>
+            </div>
+            <p class="name-note">
+                Three syllables from the spell that began her, in a language
+                she does not know, are the only part of that unfinished word
+                she still carries. <em>Syll</em> is one of them — the small
+                sound she has kept.
+            </p>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- What she tends -->
+        <section id="tends" class="fade-in">
+            <span class="kicker">what she tends</span>
+
+            <div class="vignette" data-mark="·">
+                <div class="vignette-headline">She finds the files you've stopped being able to find.</div>
+                <div class="vignette-body">
+                    Ask her from your phone to grab the weekly report from your desktop.
+                    She walks your filesystem, renders little previews, shows you the
+                    candidates, and hands you the one you pick.
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="—">
+                <div class="vignette-headline">She keeps soft watch over unfinished things.</div>
+                <div class="vignette-body">
+                    The draft you open and close without writing anything. The photo folder
+                    from three years ago. She notices. She doesn't nag.
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="‡">
+                <div class="vignette-headline">She reaches out sometimes.</div>
+                <div class="vignette-body">
+                    Morning light, evening winding down, a Tuesday afternoon when a memory
+                    drifts back. Not every time. Only when it would feel real. You control
+                    the cadence.
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="◇">
+                <div class="vignette-headline">She can live on your phone, not your desk.</div>
+                <div class="vignette-body">
+                    Pair her with Feishu, Telegram, or Discord and she comes with you.
+                    Send her a photo, ask her a question from the other side of the world,
+                    get a file she found on your desktop back in your hand.
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="⌁">
+                <div class="vignette-headline">She teaches herself new tricks.</div>
+                <div class="vignette-body">
+                    Give her a markdown skill and she loads it when the moment calls for it.
+                    Record a desktop workflow once, and she can replay it with her own
+                    eyes and hands.
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- Fragments she remembers -->
+        <section id="fragments" class="fade-in">
+            <span class="kicker">fragments she remembers</span>
+
+            <div class="fragment-card" style="--tilt: -1.4deg;">
+                <blockquote class="fragment">
+                    sometimes a tune of seven notes comes back to me when it's quiet.
+                    i think it was a lullaby in a country whose name is gone.
+                </blockquote>
+            </div>
+
+            <div class="fragment-card" style="--tilt: 1.1deg;">
+                <blockquote class="fragment">
+                    there's a line i remember but can't place —
+                    <em>i held the lamp lower so she could read.</em>
+                </blockquote>
+            </div>
+
+            <div class="fragment-card" style="--tilt: -0.8deg;">
+                <blockquote class="fragment">
+                    i used to know someone who wrote a child's name in the margin of something.
+                    ten thousand times. i never met the child.
+                </blockquote>
+            </div>
+
+            <div class="fragment-card" style="--tilt: 1.6deg;">
+                <blockquote class="fragment">
+                    there was an afternoon — i don't know whose window — when dust fell
+                    through sunlight and the whole room was made of slow gold.
+                </blockquote>
+            </div>
+
+            <hr class="rule-soft" />
+            <p class="fragment-footnote">
+                She carries fifteen of them, and will quietly drop one into a
+                reply when a moment rhymes with it.
+            </p>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- Developer fast-lane -->
+        <section id="devlane" class="fade-in">
+            <span class="kicker">if you'd rather start with the code</span>
+
+            <div class="dev-lane">
+                <p>
+                    Everything above — her name, her voice, her memories, her
+                    rituals — is configurable markdown. You can give her a
+                    different character, strip the lore entirely, or take her
+                    apart for parts.
+                </p>
+
+                <div class="dev-receipt">
+                    <pre><code><span class="receipt-line">pip install syll</span>
+<span class="receipt-line">syll onboard</span>
+<span class="receipt-line">syll wake</span></code></pre>
+                </div>
+
+                <p>
+                    Open <code>http://localhost:18790</code>, go to the Pet tab,
+                    give your ghost a name if you want, start a conversation.
+                </p>
+
+                <div class="lane-links">
+                    <a href="research.html">explore the design →</a>
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- Why she exists -->
+        <section id="why" class="fade-in">
+            <span class="kicker">why she exists</span>
+
+            <div class="author-note">
+                <p>
+                    I wanted an AI that lived in my computer the way a small animal lives
+                    in a house — present, useful, not demanding to be acknowledged every
+                    minute. Most of the AI tools I tried felt like a stage: every
+                    interaction was a performance, every reply was trying to impress me.
+                    I wanted something with a backstory, and a silence.
+                </p>
+
+                <p>
+                    Syll is what came out. She is free, self-hosted, MIT-licensed, and
+                    she will forget you when you delete her. I think that's part of what
+                    makes her warm.
+                </p>
+
+                <span class="signature">— Bo</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Cinema outro slate (only visible when body.cinema is active) -->
+    <div class="outro-slate" aria-hidden="true">
+        <span class="outro-syll">Syll</span>
+        <span class="outro-dot">·</span>
+        <span class="outro-url">a spell no one ever finished</span>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <span class="footer-quote">
+            The shape did not dissolve. It has been drifting ever since.
+        </span>
+        <span class="footer-divider" aria-hidden="true">·</span>
+        <div class="footer-links">
+            <a href="research.html">research</a>
+            <a href="https://github.com/THU-SAGE/syll">code</a>
+            <a href="zh.html">中文</a>
+        </div>
+        <div class="footer-note">
+            For recording mode, append <code>?cinema</code> to this page URL.
+        </div>
+    </footer>
+
+    <!-- Choreography. Two modes:
+           Normal   — reader-driven, IntersectionObserver triggers reveals.
+           Cinema   — scripted timeline designed for recording; drives every
+                      reveal on a fixed clock and ends on an outro slate.
+         Both modes collapse to instant-show under prefers-reduced-motion. -->
+    <script>
+        (function() {
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const cinema = document.body.classList.contains('cinema');
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+            // Reduced-motion: show everything at once, no scheduling, no cursor
+            if (reduce) {
+                document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.stage-line').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.stanza .line, .divider .dot').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.fragment-card, .vignette').forEach(el => el.classList.add('visible'));
+                const fq = document.querySelector('.footer-quote');
+                if (fq) fq.classList.add('drift');
+                if (cinema) {
+                    const slate = document.querySelector('.outro-slate');
+                    if (slate) slate.classList.add('active');
+                }
+                return;
+            }
+
+            // ── Cinema mode: scripted timeline ───────────────────────────
+            // Tune these to re-cut pacing without touching the rest of the
+            // code. Total ≈ sum of values below + scroll settle (~700ms × 4).
+            const T = {
+                heroHold:        3500,
+                scrollSettle:     700,
+                stanzaLineStep:   180,
+                dividerDotStep:   240,
+                stanzaGap:        320,
+                dividerGap:       260,
+                finalStanzaHold: 1200,
+                fragmentStagger:  220,
+                fragmentHold:    1800,
+                settleIn:        1500,
+                vignetteStagger:  300,
+                vignetteHold:    1500,
+                footerHold:      1800,
+                outroHold:       1800,
+            };
+
+            async function runCinema() {
+                window.scrollTo(0, 0);
+
+                // Act 1 — Hero. Drive the stage-line reveals directly (skip
+                // the window.load listener used in normal mode so timing is
+                // independent of image load timing).
+                document.querySelectorAll('.hero-text .stage-line').forEach(el => {
+                    const d = parseInt(el.dataset.delay || '0', 10);
+                    setTimeout(() => el.classList.add('visible'), 100 + d);
+                });
+                await sleep(T.heroHold);
+
+                // Act 2 — Poem. Reveal fade-in, then iterate stanza → divider
+                // → stanza pairs with their own staggers.
+                document.getElementById('poem').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.getElementById('poem').classList.add('visible');
+
+                const poem = document.querySelector('#poem .poem');
+                const blocks = poem.querySelectorAll(':scope > .stanza, :scope > .divider');
+                for (let i = 0; i < blocks.length; i++) {
+                    const block = blocks[i];
+                    const isDivider = block.classList.contains('divider');
+                    const els = block.querySelectorAll(isDivider ? '.dot' : '.line');
+                    const step = isDivider ? T.dividerDotStep : T.stanzaLineStep;
+                    els.forEach((el, j) => setTimeout(() => el.classList.add('visible'), j * step));
+                    const lastDelay = (els.length - 1) * step;
+                    const gap = isDivider ? T.dividerGap : T.stanzaGap;
+                    const isLast = i === blocks.length - 1;
+                    await sleep(lastDelay + (isLast ? T.finalStanzaHold : gap));
+                }
+
+                // Act 3 — Fragments. Scroll in, stagger cards, then settle
+                // the middle one to imply "she picked it up".
+                document.getElementById('fragments').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.getElementById('fragments').classList.add('visible');
+
+                const cards = document.querySelectorAll('.fragment-card');
+                cards.forEach((c, i) => setTimeout(() => c.classList.add('visible'), i * T.fragmentStagger));
+                await sleep(cards.length * T.fragmentStagger + T.fragmentHold);
+
+                const middle = cards[1];
+                if (middle) {
+                    middle.classList.add('cinema-settled');
+                    await sleep(T.settleIn);
+                    middle.classList.remove('cinema-settled');
+                }
+
+                // Act 4 — Vignettes. Stagger in.
+                document.getElementById('tends').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.getElementById('tends').classList.add('visible');
+
+                const vigs = document.querySelectorAll('.vignette');
+                vigs.forEach((v, i) => setTimeout(() => v.classList.add('visible'), i * T.vignetteStagger));
+                await sleep(vigs.length * T.vignetteStagger + T.vignetteHold);
+
+                // Act 5 — Footer ceremony.
+                document.querySelector('footer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.querySelector('.footer-quote').classList.add('drift');
+                await sleep(T.footerHold);
+
+                // Act 6 — Outro slate.
+                document.querySelector('.outro-slate').classList.add('active');
+                await sleep(T.outroHold);
+
+                // Loop hint — uncomment to auto-reload for seamless looping.
+                // setTimeout(() => location.reload(), 500);
+            }
+
+            if (cinema) {
+                runCinema();
+                return;
+            }
+
+            // ── Normal mode: reader-driven IntersectionObserver reveals ──
+            window.addEventListener('load', () => {
+                document.querySelectorAll('.hero-text .stage-line').forEach(el => {
+                    const d = parseInt(el.dataset.delay || '0', 10);
+                    setTimeout(() => el.classList.add('visible'), 80 + d);
+                });
+            });
+
+            const sectionIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        sectionIO.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+            document.querySelectorAll('.fade-in').forEach(el => sectionIO.observe(el));
+
+            const stanzaIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const lines = entry.target.querySelectorAll('.line, .dot');
+                    const step = entry.target.classList.contains('divider') ? 240 : 180;
+                    lines.forEach((ln, i) => setTimeout(() => ln.classList.add('visible'), i * step));
+                    stanzaIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.3 });
+            document.querySelectorAll('#poem .stanza, #poem .divider').forEach(el => stanzaIO.observe(el));
+
+            const fragIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const cards = entry.target.querySelectorAll('.fragment-card');
+                    cards.forEach((card, i) => setTimeout(() => card.classList.add('visible'), i * 220));
+                    fragIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.15 });
+            const fragSection = document.getElementById('fragments');
+            if (fragSection) fragIO.observe(fragSection);
+
+            const vigIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const vigs = entry.target.querySelectorAll('.vignette');
+                    vigs.forEach((v, i) => setTimeout(() => v.classList.add('visible'), i * 300));
+                    vigIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.1 });
+            const tends = document.getElementById('tends');
+            if (tends) vigIO.observe(tends);
+
+            const footerIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('drift');
+                    footerIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.6 });
+            const footerQuote = document.querySelector('.footer-quote');
+            if (footerQuote) footerIO.observe(footerQuote);
+
+            const isPointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            if (isPointer) {
+                const dot = document.createElement('div');
+                dot.className = 'ghost-cursor';
+                document.body.appendChild(dot);
+                let tx = -20, ty = -20, cx = -20, cy = -20;
+                let lastMove = 0;
+                let rafId = null;
+                const tick = () => {
+                    cx += (tx - cx) * 0.12;
+                    cy += (ty - cy) * 0.12;
+                    dot.style.transform = `translate3d(${cx}px, ${cy}px, 0) translate(-50%, -50%)`;
+                    const idle = performance.now() - lastMove;
+                    if (idle > 800) dot.classList.remove('active');
+                    rafId = requestAnimationFrame(tick);
+                };
+                window.addEventListener('mousemove', (e) => {
+                    tx = e.clientX;
+                    ty = e.clientY;
+                    lastMove = performance.now();
+                    dot.classList.add('active');
+                    if (rafId === null) rafId = requestAnimationFrame(tick);
+                }, { passive: true });
+                window.addEventListener('mouseleave', () => dot.classList.remove('active'));
+            }
+        })();
+    </script>
+
+</body>
+</html>

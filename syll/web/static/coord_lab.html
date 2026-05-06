@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syll · Click Alignment</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@400;500;700&family=Crimson+Pro:wght@400;600&display=swap">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <script>
+        // Apply persisted theme before paint to avoid flash of dark mode in light users.
+        try {
+            const saved = localStorage.getItem('nanobot-theme');
+            if (saved === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        } catch (e) { /* localStorage unavailable; default dark */ }
+    </script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            /* Dark — clean modern, cool neutral (mirrors index.html) */
+            --bg-app:        #0c0e12;
+            --bg-surface:    #161820;
+            --bg-sunken:     #1e2028;
+            --bg-raised:     #1a1c25;
+            --bg-instrument: #12141a;
+
+            --ink-primary:   #e4e6eb;
+            --ink-secondary: #9ca3af;
+            --ink-tertiary:  #6b7280;
+
+            --line:          #2a2d38;
+            --line-strong:   #3a3e4d;
+
+            --accent:        #e8a317;
+            --accent-hover:  #f0b438;
+            --accent-wash:   rgba(232, 163, 23, 0.10);
+            --accent-glow:   rgba(232, 163, 23, 0.18);
+
+            --ok:            #10b981;
+            --ok-wash:       rgba(16, 185, 129, 0.14);
+            --danger:        #ef4444;
+            --danger-wash:   rgba(239, 68, 68, 0.12);
+
+            /* Legacy aliases (kept while components migrate) */
+            --bg-primary:           var(--bg-app);
+            --bg-secondary:         var(--bg-surface);
+            --bg-tertiary:          var(--bg-sunken);
+            --accent-amber:         var(--accent);
+            --accent-amber-dim:     var(--accent-wash);
+            --accent-amber-glow:    var(--accent-glow);
+            --accent-emerald:       var(--ok);
+            --accent-emerald-dim:   var(--ok-wash);
+            --text-primary:         var(--ink-primary);
+            --text-secondary:       var(--ink-secondary);
+            --text-dim:             var(--ink-tertiary);
+            --border:               var(--line);
+            --border-subtle:        var(--line);
+            --error:                var(--danger);
+            --success:              var(--ok);
+        }
+
+        [data-theme="light"] {
+            /* Light — clean modern, cool neutral */
+            --bg-app:        #f5f5f7;
+            --bg-surface:    #ffffff;
+            --bg-sunken:     #eef0f4;
+            --bg-raised:     #ffffff;
+            --bg-instrument: #f0f2f5;
+
+            --ink-primary:   #1a1a1a;
+            --ink-secondary: #4b5563;
+            --ink-tertiary:  #9ca3af;
+
+            --line:          #d1d5db;
+            --line-strong:   #9ca3af;
+
+            --accent:        #c78c0a;
+            --accent-hover:  #b07c08;
+            --accent-wash:   rgba(199, 140, 10, 0.10);
+            --accent-glow:   rgba(199, 140, 10, 0.18);
+
+            --ok:            #059669;
+            --ok-wash:       rgba(5, 150, 105, 0.10);
+            --danger:        #dc2626;
+            --danger-wash:   rgba(220, 38, 38, 0.10);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* ── Top Bar ── */
+        .topbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .topbar-title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 1.6rem;
+            font-weight: 500;
+            font-style: italic;
+            text-transform: lowercase;
+            color: var(--accent);
+            letter-spacing: 0.005em;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            line-height: 1;
+        }
+        .topbar-title span {
+            font-style: italic;
+            font-size: 0.95rem;
+            font-weight: 400;
+            color: var(--ink-secondary);
+            text-transform: none;
+        }
+        .back-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .back-link:hover { border-color: var(--accent-amber); color: var(--accent-amber); }
+        .topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.35rem 0.55rem;
+            font-size: 0.95rem;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+        .theme-toggle:hover { border-color: var(--accent-amber); color: var(--accent-amber); }
+
+        /* ── Controls Bar ── */
+        .controls-bar {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.6rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .control-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .control-select, .control-input {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            background: var(--bg-instrument);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 0.35rem 0.6rem;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .control-select:focus, .control-input:focus { border-color: var(--accent-amber); }
+        .control-select { cursor: pointer; padding-right: 1.4rem; }
+        .control-input { width: 5rem; }
+        .control-sep { width: 1px; height: 1.4rem; background: var(--border); }
+
+        .btn-refresh {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            background: transparent;
+            color: var(--accent-emerald);
+            border: 1px solid var(--accent-emerald);
+            border-radius: 3px;
+            padding: 0.35rem 0.7rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-left: auto;
+        }
+        .btn-refresh:hover { background: var(--accent-emerald-dim); }
+        .btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── Main Layout ── */
+        .main {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        /* ── Canvas Panel ── */
+        .canvas-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(232, 163, 23, 0.02) 0%, transparent 70%),
+                var(--bg-primary);
+        }
+        .canvas-wrap {
+            position: relative;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,0.4), inset 0 0 1px rgba(232, 163, 23, 0.1);
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .canvas-wrap canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        .canvas-coords {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: color-mix(in srgb, var(--bg-app) 85%, transparent);
+            backdrop-filter: blur(4px);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--ink-secondary);
+            padding: 0.3rem 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid var(--line);
+        }
+        .canvas-coords .amber { color: var(--accent-amber); }
+        .canvas-empty {
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 2rem;
+        }
+        .canvas-empty .hint { font-size: 0.7rem; margin-top: 0.5rem; color: var(--text-dim); }
+
+        /* ── Side Panel ── */
+        .side-panel {
+            width: 320px;
+            flex-shrink: 0;
+            border-left: 1px solid var(--border);
+            background: var(--bg-secondary);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-section {
+            border-bottom: 1px solid var(--border);
+            padding: 0.9rem 1.1rem;
+        }
+        .panel-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .panel-header::before {
+            content: '';
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 1px;
+            background: var(--accent-amber);
+            box-shadow: 0 0 6px var(--accent-amber-glow);
+        }
+
+        /* Coordinate readout */
+        .coord-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.25rem 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+        }
+        .coord-label { color: var(--text-dim); font-size: 0.7rem; }
+        .coord-value { color: var(--text-primary); text-align: right; }
+        .coord-value.amber { color: var(--accent-amber); }
+        .coord-value.emerald { color: var(--accent-emerald); }
+        .coord-value.dim { color: var(--text-dim); }
+        .coord-clamped {
+            margin-top: 0.4rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+        }
+        .coord-clamped .yes { color: var(--error); }
+        .coord-clamped .no { color: var(--text-dim); }
+
+        /* Calibration sliders */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .slider-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            width: 4.5rem;
+            flex-shrink: 0;
+        }
+        .slider-track {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+        .slider-track::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background: var(--accent-amber);
+            box-shadow: 0 0 6px var(--accent-amber-glow);
+            cursor: pointer;
+        }
+        .slider-track::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background: var(--accent-amber);
+            box-shadow: 0 0 6px var(--accent-amber-glow);
+            border: none;
+            cursor: pointer;
+        }
+        .slider-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-amber);
+            width: 3.5rem;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.6rem;
+        }
+        .btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            flex: 1;
+        }
+        .btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+        .btn-amber { border-color: var(--accent-amber); color: var(--accent-amber); }
+        .btn-amber:hover { background: var(--accent-amber-dim); }
+        .btn-emerald { border-color: var(--accent-emerald); color: var(--accent-emerald); }
+        .btn-emerald:hover { background: var(--accent-emerald-dim); }
+        .btn-danger { border-color: var(--danger); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger-wash); }
+
+        /* ── Log Panel ── */
+        .log-panel {
+            flex-shrink: 0;
+            border-top: 1px solid var(--border);
+            background: var(--bg-instrument);
+            height: 140px;
+            overflow-y: auto;
+            padding: 0.5rem 1rem;
+        }
+        .log-header {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.3rem;
+            position: sticky;
+            top: 0;
+            background: var(--bg-instrument);
+            padding-bottom: 0.2rem;
+        }
+        .log-entry {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .log-entry .ts { color: var(--text-dim); }
+        .log-entry .actor { color: var(--accent-emerald); }
+        .log-entry .coords { color: var(--accent-amber); }
+        .log-entry .clamped { color: var(--error); }
+        .log-empty {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-amber);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+    </style>
+</head>
+<body x-data="coordLab()" x-init="init()">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="topbar-title">syll <span><em>coord lab</em></span></div>
+        <div class="topbar-actions">
+            <button class="theme-toggle" @click="toggleTheme()"
+                :title="darkMode ? 'switch to light' : 'switch to dark'">
+                <span x-text="darkMode ? '&#9728;' : '&#9790;'"></span>
+            </button>
+            <a href="/" class="back-link">&larr; back</a>
+        </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+        <div class="control-group">
+            <span class="control-label">Screen</span>
+            <select class="control-select" x-model.number="selectedMonitor" @change="onMonitorChange()">
+                <template x-for="m in monitors" :key="m.monitor_index">
+                    <option :value="m.monitor_index"
+                        x-text="`${m.monitor_index}: ${m.width}×${m.height}`"></option>
+                </template>
+            </select>
+        </div>
+        <div class="control-sep"></div>
+        <div class="control-group">
+            <span class="control-label">Control Mode</span>
+            <select class="control-select" x-model="actorType" @change="onActorChange()">
+                <option value="ui_tars">Direct Screen Mapping</option>
+                <option value="claude_cua">Scaled Model Mapping</option>
+                <option value="showui">Adaptive Window Mapping</option>
+            </select>
+        </div>
+        <template x-if="actorType === 'claude_cua'">
+            <div class="control-group" style="margin-left:-0.3rem;">
+                <span class="control-label">Model Frame</span>
+                <input type="number" class="control-input" x-model.number="apiWidth"
+                    @change="retransform()" placeholder="W" style="width:4rem;">
+                <span class="control-label" style="margin:0 -0.1rem;">&times;</span>
+                <input type="number" class="control-input" x-model.number="apiHeight"
+                    @change="retransform()" placeholder="H" style="width:4rem;">
+            </div>
+        </template>
+        <button class="btn-refresh" @click="refreshScreenshot()" :disabled="loading">
+            <template x-if="loading"><span class="spinner"></span></template>
+            <template x-if="!loading">Refresh Frame</template>
+        </button>
+        <div style="flex-basis:100%; color:var(--text-secondary); font-size:0.78rem; line-height:1.5; margin-top:-0.15rem;"
+            x-text="actorTypeDescription(actorType)"></div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Canvas Panel -->
+        <div class="canvas-panel">
+            <template x-if="screenshotImg">
+                <div class="canvas-wrap">
+                    <canvas x-ref="canvas"
+                        @click="handleCanvasClick($event)"
+                        @mousemove="handleCanvasHover($event)"></canvas>
+                    <div class="canvas-coords">
+                        <span>Cursor: <span class="amber" x-text="hoverCoords"></span></span>
+                        <span x-text="`${canvasW}×${canvasH}`"></span>
+                    </div>
+                </div>
+            </template>
+            <template x-if="!screenshotImg">
+                <div class="canvas-empty">
+                    <template x-if="loading"><span class="spinner"></span></template>
+                    <template x-if="!loading">
+                        <div>No screen preview loaded<div class="hint">Refresh frame to capture the current screen</div></div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <!-- Coordinate Spaces -->
+            <div class="panel-section">
+                <div class="panel-header">Click Mapping</div>
+                <template x-if="transform">
+                    <div>
+                        <div class="coord-grid">
+                            <span class="coord-label">Control Mode</span>
+                            <span class="coord-value emerald" x-text="actorTypeLabel(transform.actor_type)"></span>
+                            <span class="coord-label">Model Point</span>
+                            <span class="coord-value dim" x-text="`(${transform.model_x}, ${transform.model_y})`"></span>
+                            <span class="coord-label">Frame Point</span>
+                            <span class="coord-value" x-text="`(${transform.screenshot_x}, ${transform.screenshot_y})`"></span>
+                            <span class="coord-label">Screen Point</span>
+                            <span class="coord-value" x-text="`(${transform.desktop_x}, ${transform.desktop_y})`"></span>
+                            <span class="coord-label">Final Click</span>
+                            <span class="coord-value amber" x-text="`(${transform.executor_x}, ${transform.executor_y})`"></span>
+                        </div>
+                        <div class="coord-clamped">
+                            Edge correction: <span :class="transform.clamped ? 'yes' : 'no'"
+                                x-text="transform.clamped ? 'ON' : 'off'"></span>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!transform">
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:var(--text-dim);">
+                        Click the preview to inspect how a point maps to the final click position
+                    </div>
+                </template>
+            </div>
+
+            <!-- Calibration Profile -->
+            <div class="panel-section">
+                <div class="panel-header">Fine Alignment</div>
+                <div class="slider-row">
+                    <span class="slider-label">Horizontal Offset</span>
+                    <input type="range" class="slider-track" min="-50" max="50" step="1"
+                        x-model.number="calib.offset_dx" @input="retransform()">
+                    <span class="slider-val" x-text="calib.offset_dx"></span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-label">Vertical Offset</span>
+                    <input type="range" class="slider-track" min="-50" max="50" step="1"
+                        x-model.number="calib.offset_dy" @input="retransform()">
+                    <span class="slider-val" x-text="calib.offset_dy"></span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-label">Horizontal Scale</span>
+                    <input type="range" class="slider-track" min="0.8" max="1.2" step="0.01"
+                        x-model.number="calib.scale_sx" @input="retransform()">
+                    <span class="slider-val" x-text="calib.scale_sx.toFixed(2)"></span>
+                </div>
+                <div class="slider-row">
+                    <span class="slider-label">Vertical Scale</span>
+                    <input type="range" class="slider-track" min="0.8" max="1.2" step="0.01"
+                        x-model.number="calib.scale_sy" @input="retransform()">
+                    <span class="slider-val" x-text="calib.scale_sy.toFixed(2)"></span>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-amber" @click="saveProfile()">Save Alignment</button>
+                    <button class="btn" @click="resetProfile()">Reset</button>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="panel-section">
+                <div class="panel-header">Test Click</div>
+                <div class="btn-row">
+                    <button class="btn btn-emerald" @click="probe(true)" :disabled="!currentPoint">
+                        Preview Mapping
+                    </button>
+                    <button class="btn btn-danger" @click="probe(false)" :disabled="!currentPoint">
+                        Test Click
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Log Panel -->
+    <div class="log-panel">
+        <div class="log-header">Mapping History</div>
+        <template x-if="log.length === 0">
+            <div class="log-empty">No mapping checks yet</div>
+        </template>
+        <template x-for="(entry, i) in log" :key="i">
+            <div class="log-entry">
+                <span class="ts" x-text="entry.ts"></span>
+                <span class="actor" x-text="`[${actorTypeLabel(entry.actor_type)}]`"></span>
+                input(<span x-text="`${entry.model_x},${entry.model_y}`"></span>)
+                &rarr; click(<span class="coords" x-text="`${entry.executor_x},${entry.executor_y}`"></span>)
+                <template x-if="entry.clamped"><span class="clamped"> EDGE-CORRECTED</span></template>
+            </div>
+        </template>
+    </div>
+
+<script>
+function coordLab() {
+    return {
+        monitors: [],
+        selectedMonitor: 0,
+        actorType: 'ui_tars',
+        apiWidth: 1024,
+        apiHeight: 768,
+        loading: false,
+
+        screenshotImg: null,
+        canvasW: 0,
+        canvasH: 0,
+        hoverCoords: '—',
+
+        currentPoint: null,   // {x, y} in screenshot pixels
+        transform: null,
+
+        calib: { offset_dx: 0, offset_dy: 0, scale_sx: 1.0, scale_sy: 1.0 },
+        log: [],
+        darkMode: true,
+
+        actorTypeLabel(value) {
+            const labels = {
+                ui_tars: 'Direct Screen Mapping',
+                claude_cua: 'Scaled Model Mapping',
+                showui: 'Adaptive Window Mapping',
+            };
+            return labels[value] || value || 'Unknown';
+        },
+
+        actorTypeDescription(value) {
+            const descriptions = {
+                ui_tars: 'Use this when the model clicks directly against the screen preview and you want the simplest one-to-one mapping.',
+                claude_cua: 'Use this when the model works inside a fixed API frame and the click needs to be scaled back onto the real screen.',
+                showui: 'Use this when the model output comes from an adaptive window layout and needs aspect-ratio-aware remapping.',
+            };
+            return descriptions[value] || '';
+        },
+
+        async init() {
+            this.syncThemeFromStorage();
+            await this.fetchContext();
+            await this.refreshScreenshot();
+            await this.loadProfile();
+        },
+
+        syncThemeFromStorage() {
+            try {
+                const saved = localStorage.getItem('nanobot-theme');
+                this.darkMode = saved !== 'light';
+            } catch (e) {
+                this.darkMode = true;
+            }
+        },
+
+        toggleTheme() {
+            this.darkMode = !this.darkMode;
+            if (this.darkMode) {
+                document.documentElement.removeAttribute('data-theme');
+                try { localStorage.setItem('nanobot-theme', 'dark'); } catch (e) {}
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                try { localStorage.setItem('nanobot-theme', 'light'); } catch (e) {}
+            }
+            if (this.currentPoint) this.renderCanvas();
+        },
+
+        async fetchContext() {
+            try {
+                const res = await fetch('/api/v1/coord/context');
+                this.monitors = await res.json();
+            } catch (e) {
+                console.error('Failed to fetch context:', e);
+            }
+        },
+
+        async refreshScreenshot() {
+            this.loading = true;
+            try {
+                const res = await fetch(`/api/v1/coord/screenshot?monitor_index=${this.selectedMonitor}`);
+                const data = await res.json();
+                const img = new Image();
+                img.onload = () => {
+                    this.screenshotImg = img;
+                    this.canvasW = img.width;
+                    this.canvasH = img.height;
+                    this.$nextTick(() => this.renderCanvas());
+                };
+                img.src = `data:image/png;base64,${data.image_b64}`;
+            } catch (e) {
+                console.error('Screenshot failed:', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadProfile() {
+            try {
+                const res = await fetch('/api/v1/coord/profiles');
+                const profiles = await res.json();
+                const p = profiles.find(p => p.monitor_index === this.selectedMonitor);
+                if (p) {
+                    this.calib.offset_dx = p.offset_dx;
+                    this.calib.offset_dy = p.offset_dy;
+                    this.calib.scale_sx = p.scale_sx;
+                    this.calib.scale_sy = p.scale_sy;
+                }
+            } catch (e) { /* use defaults */ }
+        },
+
+        onMonitorChange() {
+            this.currentPoint = null;
+            this.transform = null;
+            this.refreshScreenshot();
+            this.loadProfile();
+        },
+
+        onActorChange() {
+            this.retransform();
+        },
+
+        renderCanvas() {
+            const canvas = this.$refs.canvas;
+            if (!canvas || !this.screenshotImg) return;
+
+            const container = canvas.parentElement;
+            const maxW = container.parentElement.clientWidth - 32;
+            const maxH = container.parentElement.clientHeight - 32;
+            const imgW = this.screenshotImg.width;
+            const imgH = this.screenshotImg.height;
+
+            const scale = Math.min(maxW / imgW, maxH / imgH, 1);
+            const displayW = Math.round(imgW * scale);
+            const displayH = Math.round(imgH * scale);
+
+            canvas.width = displayW;
+            canvas.height = displayH;
+            canvas.style.width = displayW + 'px';
+            canvas.style.height = displayH + 'px';
+            canvas._scale = scale;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(this.screenshotImg, 0, 0, displayW, displayH);
+
+            // Draw crosshair if point selected
+            if (this.currentPoint) {
+                const px = this.currentPoint.x * scale;
+                const py = this.currentPoint.y * scale;
+                const accent = (getComputedStyle(document.documentElement)
+                    .getPropertyValue('--accent') || '#e8a317').trim() || '#e8a317';
+
+                ctx.strokeStyle = accent;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.6;
+
+                // Vertical line
+                ctx.beginPath();
+                ctx.moveTo(px, 0);
+                ctx.lineTo(px, displayH);
+                ctx.stroke();
+
+                // Horizontal line
+                ctx.beginPath();
+                ctx.moveTo(0, py);
+                ctx.lineTo(displayW, py);
+                ctx.stroke();
+
+                // Circle
+                ctx.globalAlpha = 0.9;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(px, py, 12, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Center dot
+                ctx.fillStyle = accent;
+                ctx.globalAlpha = 1;
+                ctx.beginPath();
+                ctx.arc(px, py, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.globalAlpha = 1;
+            }
+        },
+
+        handleCanvasClick(e) {
+            const canvas = this.$refs.canvas;
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const scale = canvas._scale || 1;
+            const x = Math.round((e.clientX - rect.left) / scale);
+            const y = Math.round((e.clientY - rect.top) / scale);
+
+            this.currentPoint = { x, y };
+            this.doTransform(x, y);
+        },
+
+        handleCanvasHover(e) {
+            const canvas = this.$refs.canvas;
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const scale = canvas._scale || 1;
+            const x = Math.round((e.clientX - rect.left) / scale);
+            const y = Math.round((e.clientY - rect.top) / scale);
+            this.hoverCoords = `(${x}, ${y})`;
+        },
+
+        async doTransform(x, y) {
+            try {
+                const res = await fetch('/api/v1/coord/transform', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        x, y,
+                        monitor_index: this.selectedMonitor,
+                        actor_type: this.actorType,
+                        api_width: this.apiWidth,
+                        api_height: this.apiHeight,
+                    }),
+                });
+                this.transform = await res.json();
+                this.addLog(this.transform);
+                this.renderCanvas();
+            } catch (e) {
+                console.error('Transform failed:', e);
+            }
+        },
+
+        retransform() {
+            if (this.currentPoint) {
+                this.doTransform(this.currentPoint.x, this.currentPoint.y);
+            }
+        },
+
+        async saveProfile() {
+            try {
+                await fetch('/api/v1/coord/calibrate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        monitor_index: this.selectedMonitor,
+                        offset_dx: this.calib.offset_dx,
+                        offset_dy: this.calib.offset_dy,
+                        scale_sx: this.calib.scale_sx,
+                        scale_sy: this.calib.scale_sy,
+                        enabled: true,
+                    }),
+                });
+                this.retransform();
+            } catch (e) {
+                console.error('Save failed:', e);
+            }
+        },
+
+        resetProfile() {
+            this.calib = { offset_dx: 0, offset_dy: 0, scale_sx: 1.0, scale_sy: 1.0 };
+            this.retransform();
+        },
+
+        async probe(dryRun) {
+            if (!this.currentPoint) return;
+            try {
+                const res = await fetch('/api/v1/coord/probe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        x: this.currentPoint.x,
+                        y: this.currentPoint.y,
+                        monitor_index: this.selectedMonitor,
+                        actor_type: this.actorType,
+                        api_width: this.apiWidth,
+                        api_height: this.apiHeight,
+                        dry_run: dryRun,
+                    }),
+                });
+                const data = await res.json();
+                this.transform = data;
+                this.addLog({ ...data, probed: !dryRun });
+            } catch (e) {
+                console.error('Probe failed:', e);
+            }
+        },
+
+        addLog(entry) {
+            const now = new Date();
+            const ts = [now.getHours(), now.getMinutes(), now.getSeconds()]
+                .map(n => String(n).padStart(2, '0')).join(':');
+            this.log.unshift({ ...entry, ts });
+            if (this.log.length > 10) this.log.pop();
+        },
+    };
+}
+</script>
+</body>
+</html>

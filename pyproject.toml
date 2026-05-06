@@ -1,0 +1,117 @@
+[project]
+name = "syll"
+version = "0.2.0"
+description = "Syll — a small, self-hosted AI companion who sits at the edge of your screen and quietly tends the things you almost forgot."
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "THU-SAGE contributors"}
+]
+keywords = ["ai", "agent", "chatbot", "companion", "self-hosted", "syll", "personal-ai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "litellm>=1.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "websockets>=12.0",
+    "websocket-client>=1.6.0",
+    "httpx>=0.25.0",
+    "loguru>=0.7.0",
+    "readability-lxml>=0.8.0",
+    "rich>=13.0.0",
+    "textual>=0.60.0",
+    "croniter>=2.0.0",
+    "python-telegram-bot>=21.0",
+    "lark-oapi>=1.0.0",
+    "mss>=9.0.0",
+    "pyautogui>=0.9.54",
+    "pyperclip>=1.8.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.9",
+    "jinja2>=3.1.0",
+    "numpy>=1.26.0",
+    "opencv-python>=4.8.0",
+    "PyQt6>=6.6.0",
+    "PyQt6-WebEngine>=6.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "anyio>=4.0",
+    "trio>=0.24",
+    "httpx>=0.27",
+    "ruff>=0.1.0",
+]
+gui = [
+    "openai>=1.0.0",
+    "pynput>=1.7.7",
+    "pyobjc-framework-Quartz>=10.3; sys_platform == 'darwin'",
+]
+
+[project.scripts]
+syll = "syll.cli.commands:app"
+
+[project.urls]
+Homepage   = "https://micasa99.github.io/syll/"
+Repository = "https://github.com/THU-SAGE/syll"
+Research   = "https://micasa99.github.io/syll/research.html"
+Issues     = "https://github.com/THU-SAGE/syll/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["syll"]
+
+[tool.hatch.build.targets.wheel.sources]
+"syll" = "syll"
+
+# Include non-Python files in skills and workspace templates
+[tool.hatch.build]
+include = [
+    "syll/**/*.py",
+    "syll/skills/**/*.md",
+    "syll/skills/**/*.sh",
+    "syll/templates/**/*.md",
+    "syll/web/static/**",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "syll/",
+    "bridge/",
+    "README.md",
+    "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+"bridge" = "syll/bridge"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = [
+    "E501",  # line length — noisy for existing prose
+    "E741",  # ambiguous single-letter names, pragmatic in existing code
+    "F821",  # undefined names in forward-ref type-annotation strings
+    "F841",  # unused-assigned, pre-existing in a few test files
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

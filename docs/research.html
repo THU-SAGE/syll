@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syll — Research Notes</title>
+    <meta name="description" content="Design notes for Syll: persona-driven self-hosted AI companions. Architecture, design contributions, and technical appendix.">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E👻%3C/text%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles/site.css">
+</head>
+<body>
+
+    <!-- Top bar -->
+    <nav class="topbar">
+        <a href="index.html" class="wordmark" style="text-decoration:none;">Syll</a>
+        <span class="links">
+            <a href="index.html">home</a>
+            <a href="https://github.com/THU-SAGE/syll">code</a>
+            <a href="#bibtex">cite</a>
+        </span>
+    </nav>
+
+    <article class="research-body">
+
+        <h1>Syll — Persona-Driven Self-Hosted AI Companions</h1>
+        <p style="font-family: var(--serif); font-style: italic; font-size: 1.25rem; color: var(--paper-dim); margin-top: 0.5rem;">
+            design notes for a small ghost that lives in your computer
+        </p>
+
+        <p class="meta">
+            Authors: THU-SAGE contributors<br/>
+            Version: v0.1 · 2026-04-13<br/>
+            Code: <a href="https://github.com/THU-SAGE/syll">github.com/THU-SAGE/syll</a> ·
+            Landing: <a href="index.html">thu-sage.github.io/syll</a>
+        </p>
+
+        <h2>Abstract</h2>
+
+        <p>
+            We describe <strong>Syll</strong>, an open-source self-hosted AI companion framework
+            that treats agent identity as plain-text configuration rather than prompt-engineering.
+            Syll is a compact Python agent framework
+            shipping with a default persona — an <em>unfinished spell</em> that has learned
+            to tend a user's inner garden of half-finished drafts, old photos, and unsent
+            messages. The persona lives in user-editable markdown files and is substituted
+            into every LLM turn via a lightweight template layer.
+        </p>
+
+        <p>
+            We introduce four small design ideas aimed at making locally-hosted companion
+            agents feel less like a service and more like a quiet presence: (1)
+            <strong>persona as config</strong>, not code, so users can replace the entire
+            character without touching any Python; (2) <strong>lore fragments as progressive
+            context</strong>, a dedicated file of short memories the agent surfaces rarely
+            and only when a moment in conversation naturally rhymes with one; (3)
+            <strong>proactive rituals with agent-judged silence</strong>, where scheduled
+            "reach-out" moments (morning light, evening wind-down, Sunday close) may
+            return empty responses that the cron handler skips delivery on, letting the
+            agent abstain when a real human would; and (4) <strong>confirmation-first
+            delivery</strong> across heterogeneous chat channels (Feishu, Telegram, Discord,
+            WhatsApp) for operations with side-effects like file transfer.
+        </p>
+
+        <p>
+            We report our current implementation, design choices, and early anecdotal
+            observations from live deployment against a Feishu mobile client. We make no
+            claims about generality or benchmark performance; this is an artifact paper
+            describing a running system built for a single user and released publicly as
+            an existence proof of a particular tonal and architectural choice.
+        </p>
+
+        <h2>1. System overview</h2>
+
+        <div class="placeholder">
+            figure 1: system architecture diagram (placeholder — to be rendered)
+        </div>
+
+        <p>
+            The system is organized around a single-process <em>agent loop</em> that
+            consumes inbound messages from a <em>message bus</em>, builds a context from
+            bootstrap files and progressively-loaded skills, calls an LLM via LiteLLM,
+            executes any returned tool calls, and publishes an outbound message back to
+            the originating channel. Channel implementations (Feishu, Telegram, Discord,
+            WhatsApp, Web UI, CLI) plug into the bus and are otherwise independent of
+            agent internals.
+        </p>
+
+        <p>
+            Persistent state lives in a user-owned workspace directory at
+            <code>~/.syll/workspace/</code>. All identity, voice, and lore content is
+            plain markdown the user can read and edit. The LLM never directly touches
+            configuration; the configuration shapes the system prompt the LLM sees each
+            turn.
+        </p>
+
+        <h2>2. Design contributions</h2>
+
+        <h3>2.1 Persona as config, not code</h3>
+
+        <p>
+            Most open-source agent frameworks bake personality into Python prompt
+            constants or Pydantic schemas. Editing the persona requires touching the
+            codebase. Syll instead places the entire persona across five editable
+            markdown files under the workspace:
+            <code>IDENTITY.md</code> (who you are, deeply),
+            <code>SOUL.md</code> (voice and tone rules),
+            <code>AGENTS.md</code> (behavior rules like "announce before you act"),
+            <code>USER.md</code> (how the user prefers to be addressed), and
+            <code>lore/fragments.md</code> (memory pieces the agent may surface).
+            Two placeholders — <code>{{ghost_name}}</code> and <code>{{user_name}}</code> —
+            are substituted at system-prompt-build time, with fallback values for the
+            unset case, so these files remain both human-editable and LLM-ready.
+        </p>
+
+        <p>
+            The cost of this choice is that the system prompt grows linearly with lore
+            richness (we currently sit at ~10k tokens per turn, comfortably within modern
+            context windows). The benefit is that changing the agent's character
+            completely — its backstory, voice, even the language it speaks in — is a
+            text-editor operation, not a pull request.
+        </p>
+
+        <h3>2.2 Lore fragments as progressive context</h3>
+
+        <p>
+            The persona's backstory contains roughly fifteen specific <em>fragments</em>:
+            tiny atmospheric memories ("a tune of seven notes that comes back to me when
+            it's quiet", "a child's name written ten thousand times in the margin of
+            something"). Each fragment is stored with a <code>rhymes with</code>
+            annotation describing the class of conversational moments where it might
+            naturally surface. The entire fragments file is injected into every system
+            prompt, together with rules for rarity ("at most one per reply, at most one
+            in five replies overall").
+        </p>
+
+        <p>
+            The LLM is responsible for deciding when a moment actually rhymes. In live
+            testing, fragments surface roughly as intended — most replies contain none,
+            and when one does appear it is usually after the substantive reply content,
+            as a quiet aside. No dedicated retrieval mechanism, no vector database, no
+            special tool call: the model's pattern-matching is sufficient if the rules
+            are stated firmly and the fragment pool is small enough to fit in context.
+        </p>
+
+        <h3>2.3 Proactive rituals with agent-judged silence</h3>
+
+        <p>
+            Four cron jobs ship as optional defaults: a morning greeting, an evening
+            wind-down, a Tuesday/Friday "surfacing memory" slot, and a Sunday week-close.
+            Each is installed as an explicit user action via a button in the web UI
+            (<em>not</em> startup auto-install — deletes stay deleted). When a ritual
+            fires, the agent receives a prompt that describes the mood and explicitly
+            permits an empty response.
+        </p>
+
+        <p>
+            The cron handler checks for non-empty whitespace-stripped output before
+            publishing; empty replies are simply dropped. This single-line guard
+            converts "proactive messaging" from an always-on notification firehose into
+            something closer to a real housemate who might or might not speak depending
+            on whether they feel like it in the moment. Combined with a runtime kill
+            switch (<code>identity.rituals_enabled</code>), the user retains tight
+            control without losing the character.
+        </p>
+
+        <h3>2.4 Confirmation-first delivery across channels</h3>
+
+        <p>
+            For operations with real-world side effects — sending a file, deleting
+            something, executing a destructive command — we adopt a mandatory
+            two-turn pattern encoded in the skill (<code>file-retrieval/SKILL.md</code>):
+            find → render previews → list candidates with absolute paths embedded in
+            the reply text → <em>stop the turn</em> → wait for the user's choice →
+            attach the chosen file. The skill is marked <code>always: true</code> and
+            fully inlined into every system prompt, which has empirically been more
+            reliable than progressive loading for rules the LLM tends to skip.
+        </p>
+
+        <p>
+            Embedding absolute paths in the reply text (not just the tool-call
+            arguments) is load-bearing: the next turn's LLM context only preserves
+            previous assistant text, not tool-call argument JSON. A path that lives
+            only in the tool call is forgotten by the following turn and causes the
+            confirmation step to fail with a repeated search.
+        </p>
+
+        <h2>3. Demos</h2>
+
+        <h3 id="demo-recorded-workflow">Demo A — recording a desktop workflow</h3>
+        <p>
+            Syll captures a live desktop session into synchronized video plus a step
+            trace. In the Demo studio, the operator scrubs the timeline, inspects
+            keyframes, cleans up labels and timing, and then publishes the run as a
+            reusable recorded workflow that can be replayed or scheduled later.
+        </p>
+        <figure class="research-demo">
+            <video controls playsinline preload="metadata" poster="media/demo/demo-1-recorded-workflow.jpg">
+                <source src="media/demo/demo-1-recorded-workflow.mp4" type="video/mp4">
+            </video>
+            <figcaption>
+                Capture once, then keep the recording inspectable: video, step timing,
+                and editable metadata all stay in the same surface.
+            </figcaption>
+            <p class="research-demo-links">
+                <a href="media/demo/demo-1-recorded-workflow.mp4">Open video</a>
+                <a href="media/demo/demo-1-recorded-workflow.jpg">Open poster</a>
+            </p>
+        </figure>
+
+        <h3 id="demo-morning-ritual">Demo B — a morning ritual briefing</h3>
+        <p>
+            A scheduled ritual wakes up on its own, gathers the morning context, and
+            returns a voice-ready daily briefing. The recording shows the whole
+            proactive loop in one pass: scheduled trigger, generation, and the spoken
+            result landing back in the user-facing surface.
+        </p>
+        <figure class="research-demo">
+            <video controls playsinline preload="metadata" poster="media/demo/demo-2-morning-ritual.jpg">
+                <source src="media/demo/demo-2-morning-ritual.mp4" type="video/mp4">
+            </video>
+            <figcaption>
+                Rituals are not just timers. They are editable, user-facing behaviors
+                that can wake up, speak, and report back without leaving the web UI.
+            </figcaption>
+            <p class="research-demo-links">
+                <a href="media/demo/demo-2-morning-ritual.mp4">Open video</a>
+                <a href="media/demo/demo-2-morning-ritual.jpg">Open poster</a>
+            </p>
+        </figure>
+
+        <h3 id="demo-phone-file-return">Demo C — returning a file through chat</h3>
+        <p>
+            From a phone chat, the user asks Syll to find a presentation on the
+            desktop. Syll searches locally, previews the likely matches, confirms the
+            right file with a screenshot, and then returns the chosen document through
+            the chat channel without pulling the user back to the desktop.
+        </p>
+        <figure class="research-demo">
+            <video controls playsinline preload="metadata" poster="media/demo/demo-3-phone-file-return.jpg">
+                <source src="media/demo/demo-3-phone-file-return.mp4" type="video/mp4">
+            </video>
+            <figcaption>
+                The phone-side flow stays simple: ask, confirm, and receive the file,
+                while the desktop-side search and preview happen in the background.
+            </figcaption>
+            <p class="research-demo-links">
+                <a href="media/demo/demo-3-phone-file-return.mp4">Open video</a>
+                <a href="media/demo/demo-3-phone-file-return.jpg">Open poster</a>
+            </p>
+        </figure>
+
+        <h2>4. Technical appendix</h2>
+
+        <h3>Repository layout</h3>
+        <pre><code>syll/
+├── agent/           core loop, context, memory, skills, tools
+├── channels/        feishu, telegram, discord, whatsapp
+├── bus/             inbound/outbound routing
+├── cron/            schedule, service, store
+├── config/          pydantic schema + loader
+├── providers/       LiteLLM wrapper
+├── session/         conversation history
+├── skills/          bundled skills (file-retrieval, github, ...)
+├── templates/       workspace bootstrap templates
+│   └── workspace/
+│       ├── IDENTITY.md
+│       ├── SOUL.md
+│       ├── AGENTS.md
+│       ├── USER.md
+│       └── lore/
+│           ├── fragments.md
+│           └── rituals.md
+├── web/             FastAPI + Alpine.js web UI
+└── cli/             commands (wake, web, onboard, ...)</code></pre>
+
+        <h3>Extension points</h3>
+        <p>
+            <strong>Adding a channel:</strong> subclass <code>BaseChannel</code> in
+            <code>syll/channels/</code>, implement <code>send()</code> and inbound
+            event handling, register in <code>ChannelManager</code>. See
+            <code>channels/feishu.py</code> for a reference implementation with file
+            upload.
+        </p>
+        <p>
+            <strong>Adding a skill:</strong> create
+            <code>~/.syll/workspace/skills/&lt;name&gt;/SKILL.md</code> with YAML
+            frontmatter (<code>name</code>, <code>description</code>, optional
+            <code>metadata: {"syll": {"always": true}}</code>). Progressive-loaded
+            skills appear in the skills-summary section of the system prompt; the
+            agent loads the full file via <code>read_file</code> when a task matches.
+            Always-loaded skills are inlined in full every turn.
+        </p>
+        <p>
+            <strong>Editing the persona:</strong> edit any of the markdown files under
+            <code>~/.syll/workspace/</code>. Changes take effect on the next chat
+            turn (no restart needed). Template variables
+            <code>{{ghost_name}}</code> and <code>{{user_name}}</code> are substituted
+            at build time.
+        </p>
+
+        <h3>Observed limits</h3>
+        <p>
+            (1) Fragment surfacing rate depends on the LLM's adherence to rarity
+            rules — stronger models follow the "roughly one in five" guidance more
+            reliably. (2) Proactive rituals that return empty appear in the log as
+            completed jobs with no delivered message, which can confuse users expecting
+            a message every firing; the UI flag this as a feature but it is a mild
+            onboarding friction. (3) Rename propagation: the default
+            <code>{{ghost_name}}="Syll"</code> is hot-reloaded on profile change, but
+            ritual prompts already installed in the cron store require fire-time
+            substitution to pick up the new name — implemented via a shared
+            <code>ContextBuilder.substitute()</code> method called from the cron
+            handler.
+        </p>
+
+        <h2>5. Related work</h2>
+
+        <div class="placeholder">
+            related work section — to be written.<br/>
+            brief touchpoints: Replika (character-based but cloud-hosted), Character.AI
+            (serverside, no lifecycle outside chat), Rivet / LangGraph (workflow-first,
+            not companion-first), Open WebUI (interface-first, no persona layer),
+            AutoGen Studio (developer-first, no character).
+        </div>
+
+        <h2>6. License and artifact availability</h2>
+
+        <p>
+            All code and documentation are released under the MIT license. The
+            full repository, including prompt files, skill definitions, and
+            workspace templates, is available at
+            <a href="https://github.com/THU-SAGE/syll">github.com/THU-SAGE/syll</a>.
+            Installation: <code>pip install syll</code>. The default persona
+            and lore content are shipped as templates and can be replaced without
+            modifying code.
+        </p>
+
+        <h2 id="bibtex">Cite</h2>
+
+        <pre class="bibtex">@software{syll2026,
+  title  = {Syll: Persona-Driven Self-Hosted AI Companions},
+  author = {{THU-SAGE contributors}},
+  year   = {2026},
+  url    = {https://github.com/THU-SAGE/syll},
+  note   = {Version 0.1. MIT License.}
+}</pre>
+
+        <p style="margin-top: 3rem; font-size: 0.85rem; color: var(--paper-faint);">
+            <a href="index.html">← back to the landing page</a>
+        </p>
+
+    </article>
+
+    <footer>
+        <span class="footer-quote">
+            The shape did not dissolve. It has been drifting ever since.
+        </span>
+        <div class="footer-links">
+            <a href="index.html">home</a>
+            <a href="https://github.com/THU-SAGE/syll">GitHub</a>
+            <a href="https://github.com/THU-SAGE/syll/blob/main/LICENSE">MIT license</a>
+        </div>
+    </footer>
+
+</body>
+</html>

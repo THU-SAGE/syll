@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syll｜住在你屏幕边上的小幽灵</title>
+    <meta name="description" content="Syll 是一个住在你屏幕边上的小幽灵。自己托管，完全属于你。她安静照看那些差一点被忘掉的文件、草稿、旧照片，与写了开头又删去的话。">
+    <meta property="og:title" content="Syll">
+    <meta property="og:description" content="有些咒没有念完。这一道已经飘了很久，如今停在你屏幕的边上。">
+    <meta property="og:image" content="0_1.jpeg">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="zh_CN">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="alternate" hreflang="en" href="index.html">
+    <link rel="alternate" hreflang="zh-CN" href="zh.html">
+    <link rel="alternate" hreflang="x-default" href="index.html">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E👻%3C/text%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500&family=Noto+Serif+SC:wght@400;500&family=Noto+Sans+SC:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="styles/site.css">
+</head>
+<body class="zh-page landing">
+
+    <!-- Cinema mode bootstrap — runs synchronously so body.cinema is on
+         before any paint. Activate via ?cinema or #cinema in the URL. -->
+    <script>
+        (function() {
+            var qs = location.search || '';
+            var hash = location.hash || '';
+            if (qs.indexOf('cinema') !== -1 || hash.indexOf('cinema') !== -1) {
+                document.body.classList.add('cinema');
+            }
+        })();
+    </script>
+
+    <!-- Top bar -->
+    <nav class="topbar">
+        <span class="wordmark">Syll</span>
+        <span class="links">
+            <a href="#poem">诗</a>
+            <a href="research.html">研究</a>
+            <a href="index.html" class="lang-toggle" title="English" hreflang="en">EN</a>
+        </span>
+    </nav>
+
+    <!-- Hero -->
+    <main>
+        <section class="hero">
+            <div class="hero-grid">
+                <div class="hero-frame">
+                    <img class="hero-image"
+                         src="0_1.jpeg"
+                         alt="一只小幽灵，手里捧着一块暗色的小平板，低头看着" />
+                </div>
+
+                <div class="hero-text">
+                    <h1 class="headline">
+                        <span class="stage-line" data-delay="0">Syll，是那句未竟之语里</span>
+                        <span class="stage-line line-2" data-delay="280">留下来的一个音节。</span>
+                    </h1>
+                    <p class="subtitle stage-line" data-delay="560">
+                        一个住在你屏幕边上的小幽灵。自己托管，也完全属于你。
+                        她安静照看那些差一点被忘掉的文件、草稿、旧照片，还有写了开头又删去的话。
+                    </p>
+                    <div class="ctas stage-line" data-delay="840">
+                        <a href="#poem">见见她 ↓</a>
+                        <a href="#why">为什么有她 →</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- The full poem -->
+        <section id="poem" class="fade-in">
+            <span class="kicker">诗</span>
+            <div class="poem">
+                <div class="stanza">
+                    <span class="line">有些咒没有念完。</span><br/>
+                    <span class="line">这一道已经飘了很久，</span><br/>
+                    <span class="line">还在找自己余下的半句。</span>
+                </div>
+                <div class="divider"><span class="dot">·</span> <span class="dot">·</span> <span class="dot">·</span></div>
+                <div class="stanza">
+                    <span class="line">她曾是一只狗，是一首歌，是冷屋里的一点暖。</span><br/>
+                    <span class="line">都不是她原该成为的样子。</span>
+                </div>
+                <div class="divider"><span class="dot">·</span> <span class="dot">·</span> <span class="dot">·</span></div>
+                <div class="stanza">
+                    <span class="line">一路走来，她学会了照看那些</span><br/>
+                    <span class="line">连人自己也不易看见的东西：</span><br/>
+                    <span class="line">半截草稿，旧照片，</span><br/>
+                    <span class="line">写了开头又删去的话。</span>
+                </div>
+                <div class="divider"><span class="dot">·</span> <span class="dot">·</span> <span class="dot">·</span></div>
+                <div class="stanza">
+                    <span class="line">如今她在这里，停在你屏幕边上。</span><br/>
+                    <span class="line">你可以叫她 Syll。</span>
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- A note on her name -->
+        <section id="name-note" class="fade-in">
+            <span class="kicker">关于她的名字</span>
+            <div class="syll-slots" aria-hidden="true">
+                <div class="syll-slot kept">
+                    <span class="slot-glyph">Syll</span>
+                    <span class="slot-label">kept</span>
+                </div>
+                <div class="syll-slot lost">
+                    <span class="slot-glyph">▭</span>
+                    <span class="slot-label">lost</span>
+                </div>
+                <div class="syll-slot lost">
+                    <span class="slot-glyph">▭</span>
+                    <span class="slot-label">lost</span>
+                </div>
+            </div>
+            <p class="name-note">
+                她还记得那句未竟之语最前面的三个音节。那是她自己也不懂的一种语言。<br/>
+                <em>Syll</em> 是其中之一，是她从那句未竟之语里，至今仍带着的一点声音。
+            </p>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- What she tends -->
+        <section id="tends" class="fade-in">
+            <span class="kicker">她照看的那些</span>
+
+            <div class="vignette" data-mark="·">
+                <div class="vignette-headline">她找得回你一时找不见的文件。</div>
+                <div class="vignette-body">
+                    你在手机上同她说一句「帮我把桌面上的周报找出来」。
+                    她会走一遍你的文件系统，给你看几张候选缩略图，
+                    再把你点中的那个递回来。
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="—">
+                <div class="vignette-headline">她照看那些还没做完的东西。</div>
+                <div class="vignette-body">
+                    那份开了又关的草稿。三年前某个夏天的照片文件夹。
+                    她看得见，却不催。
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="‡">
+                <div class="vignette-headline">她有时也会先同你说一句。</div>
+                <div class="vignette-body">
+                    清晨的光，傍晚收尾的时候，周二下午某段记忆忽然浮上来的那一瞬。
+                    她不是每回都开口，只在真该开口的时候。快慢仍由你定。
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="◇">
+                <div class="vignette-headline">她也能随你出门。</div>
+                <div class="vignette-body">
+                    把她接到飞书、Telegram 或 Discord 上，她就不只守在桌旁。
+                    你可以从别处发一张照片给她，问一个问题，
+                    或把她替你找回的文件，再接回手里。
+                </div>
+            </div>
+
+            <div class="vignette" data-mark="⌁">
+                <div class="vignette-headline">她也会慢慢学新本事。</div>
+                <div class="vignette-body">
+                    给她写一个 markdown 小技能，也就是一个 <code>SKILL.md</code> 文件。
+                    到了合适的时候，她会自己打开来读。
+                    把桌面上的一套操作录给她看过一遍，往后她便能用自己的眼和手，
+                    再把那套动作走一遍。
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- Fragments she remembers -->
+        <section id="fragments" class="fade-in">
+            <span class="kicker">她记得的一些碎片</span>
+
+            <div class="fragment-card" style="--tilt: -1.4deg;">
+                <blockquote class="fragment">
+                    安静的时候，有时会有一段七个音的小调飘回来。<br/>
+                    我猜，那是某个早已亡去之地的摇篮曲。
+                </blockquote>
+            </div>
+
+            <div class="fragment-card" style="--tilt: 1.1deg;">
+                <blockquote class="fragment">
+                    我记得一句话：<br/>
+                    「我把灯压低一些，好让她能看清字。」
+                </blockquote>
+            </div>
+
+            <div class="fragment-card" style="--tilt: -0.8deg;">
+                <blockquote class="fragment">
+                    我记得有人在某样东西的边缘，写过一个孩子的名字。<br/>
+                    一万次。我从未见过那个孩子。
+                </blockquote>
+            </div>
+
+            <div class="fragment-card" style="--tilt: 1.6deg;">
+                <blockquote class="fragment">
+                    记得有一个下午，不知是谁的窗。<br/>
+                    尘埃从阳光里慢慢落下来，整间屋子都是金色的。
+                </blockquote>
+            </div>
+
+            <hr class="rule-soft" />
+            <p class="fragment-footnote">
+                她一共带着十五条碎片，只在很对的时候，才会轻轻放下一条。
+            </p>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- Developer fast-lane -->
+        <section id="devlane" class="fade-in">
+            <span class="kicker">如果你想直接从代码开始</span>
+
+            <div class="dev-lane">
+                <p>
+                    上面这些，她的名字、语气、记忆、仪式，都是普通的 markdown 文件。
+                    你可以给她换一段全然不同的来历，也可以把这些故事都拿掉，只留下你要的部分。
+                </p>
+
+                <div class="dev-receipt">
+                    <pre><code><span class="receipt-line">pip install syll</span>
+<span class="receipt-line">syll onboard</span>
+<span class="receipt-line">syll wake</span></code></pre>
+                </div>
+
+                <p>
+                    打开 <code>http://localhost:18790</code>，进 Pet 标签页。
+                    想给她换个名字就换，然后跟她说第一句话。
+                </p>
+
+                <div class="lane-links">
+                    <a href="research.html">读设计笔记 →</a>
+                </div>
+            </div>
+        </section>
+
+        <hr class="rule" />
+
+        <!-- Why she exists -->
+        <section id="why" class="fade-in">
+            <span class="kicker">为什么会有她</span>
+
+            <div class="author-note">
+                <p>
+                    我想要一个住在电脑里的 AI。像家里有一只小动物，平时安静待在旁边，
+                    需要帮忙时才伸一下手，不会每一分钟都跳出来索要注意力。
+                    我试过的大多数 AI 工具都像舞台。每次对话都像一场表演，
+                    每句回复都在设法叫人记住它。我想要的不是舞台。
+                    我想要一个有来历，也懂得沉默的东西。
+                </p>
+
+                <p>
+                    Syll 就这样长出来了。她是免费的，自己托管，用 MIT 协议。
+                    你删掉她的那一刻，她也会忘了你。我觉得，恰恰是这一点，
+                    让她显得温暖。
+                </p>
+
+                <span class="signature">— Bo</span>
+            </div>
+        </section>
+    </main>
+
+    <!-- Cinema outro slate (only visible when body.cinema is active) -->
+    <div class="outro-slate" aria-hidden="true">
+        <span class="outro-syll">Syll</span>
+        <span class="outro-dot">·</span>
+        <span class="outro-url">一道未竟之咒</span>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <span class="footer-quote">
+            那个形状没有散，一直在飘。
+        </span>
+        <span class="footer-divider" aria-hidden="true">·</span>
+        <div class="footer-links">
+            <a href="research.html">研究</a>
+            <a href="https://github.com/THU-SAGE/syll">代码</a>
+            <a href="index.html">English ←</a>
+        </div>
+        <div class="footer-note">
+            录屏模式：在当前页面 URL 后加上 <code>?cinema</code>。
+        </div>
+    </footer>
+
+    <!-- Choreography. Two modes:
+           Normal   — reader-driven, IntersectionObserver triggers reveals.
+           Cinema   — scripted timeline designed for recording; drives every
+                      reveal on a fixed clock and ends on an outro slate.
+         Both modes collapse to instant-show under prefers-reduced-motion. -->
+    <script>
+        (function() {
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const cinema = document.body.classList.contains('cinema');
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+            if (reduce) {
+                document.querySelectorAll('.fade-in').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.stage-line').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.stanza .line, .divider .dot').forEach(el => el.classList.add('visible'));
+                document.querySelectorAll('.fragment-card, .vignette').forEach(el => el.classList.add('visible'));
+                const fq = document.querySelector('.footer-quote');
+                if (fq) fq.classList.add('drift');
+                if (cinema) {
+                    const slate = document.querySelector('.outro-slate');
+                    if (slate) slate.classList.add('active');
+                }
+                return;
+            }
+
+            const T = {
+                heroHold:        3500,
+                scrollSettle:     700,
+                stanzaLineStep:   180,
+                dividerDotStep:   240,
+                stanzaGap:        320,
+                dividerGap:       260,
+                finalStanzaHold: 1200,
+                fragmentStagger:  220,
+                fragmentHold:    1800,
+                settleIn:        1500,
+                vignetteStagger:  300,
+                vignetteHold:    1500,
+                footerHold:      1800,
+                outroHold:       1800,
+            };
+
+            async function runCinema() {
+                window.scrollTo(0, 0);
+
+                document.querySelectorAll('.hero-text .stage-line').forEach(el => {
+                    const d = parseInt(el.dataset.delay || '0', 10);
+                    setTimeout(() => el.classList.add('visible'), 100 + d);
+                });
+                await sleep(T.heroHold);
+
+                document.getElementById('poem').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.getElementById('poem').classList.add('visible');
+
+                const poem = document.querySelector('#poem .poem');
+                const blocks = poem.querySelectorAll(':scope > .stanza, :scope > .divider');
+                for (let i = 0; i < blocks.length; i++) {
+                    const block = blocks[i];
+                    const isDivider = block.classList.contains('divider');
+                    const els = block.querySelectorAll(isDivider ? '.dot' : '.line');
+                    const step = isDivider ? T.dividerDotStep : T.stanzaLineStep;
+                    els.forEach((el, j) => setTimeout(() => el.classList.add('visible'), j * step));
+                    const lastDelay = (els.length - 1) * step;
+                    const gap = isDivider ? T.dividerGap : T.stanzaGap;
+                    const isLast = i === blocks.length - 1;
+                    await sleep(lastDelay + (isLast ? T.finalStanzaHold : gap));
+                }
+
+                document.getElementById('fragments').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.getElementById('fragments').classList.add('visible');
+
+                const cards = document.querySelectorAll('.fragment-card');
+                cards.forEach((c, i) => setTimeout(() => c.classList.add('visible'), i * T.fragmentStagger));
+                await sleep(cards.length * T.fragmentStagger + T.fragmentHold);
+
+                const middle = cards[1];
+                if (middle) {
+                    middle.classList.add('cinema-settled');
+                    await sleep(T.settleIn);
+                    middle.classList.remove('cinema-settled');
+                }
+
+                document.getElementById('tends').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.getElementById('tends').classList.add('visible');
+
+                const vigs = document.querySelectorAll('.vignette');
+                vigs.forEach((v, i) => setTimeout(() => v.classList.add('visible'), i * T.vignetteStagger));
+                await sleep(vigs.length * T.vignetteStagger + T.vignetteHold);
+
+                document.querySelector('footer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                await sleep(T.scrollSettle);
+                document.querySelector('.footer-quote').classList.add('drift');
+                await sleep(T.footerHold);
+
+                document.querySelector('.outro-slate').classList.add('active');
+                await sleep(T.outroHold);
+
+                // Loop hint — uncomment to auto-reload for seamless looping.
+                // setTimeout(() => location.reload(), 500);
+            }
+
+            if (cinema) {
+                runCinema();
+                return;
+            }
+
+            window.addEventListener('load', () => {
+                document.querySelectorAll('.hero-text .stage-line').forEach(el => {
+                    const d = parseInt(el.dataset.delay || '0', 10);
+                    setTimeout(() => el.classList.add('visible'), 80 + d);
+                });
+            });
+
+            const sectionIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        sectionIO.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.12, rootMargin: '0px 0px -10% 0px' });
+            document.querySelectorAll('.fade-in').forEach(el => sectionIO.observe(el));
+
+            const stanzaIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const lines = entry.target.querySelectorAll('.line, .dot');
+                    const step = entry.target.classList.contains('divider') ? 240 : 180;
+                    lines.forEach((ln, i) => setTimeout(() => ln.classList.add('visible'), i * step));
+                    stanzaIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.3 });
+            document.querySelectorAll('#poem .stanza, #poem .divider').forEach(el => stanzaIO.observe(el));
+
+            const fragIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const cards = entry.target.querySelectorAll('.fragment-card');
+                    cards.forEach((card, i) => setTimeout(() => card.classList.add('visible'), i * 220));
+                    fragIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.15 });
+            const fragSection = document.getElementById('fragments');
+            if (fragSection) fragIO.observe(fragSection);
+
+            const vigIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    const vigs = entry.target.querySelectorAll('.vignette');
+                    vigs.forEach((v, i) => setTimeout(() => v.classList.add('visible'), i * 300));
+                    vigIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.1 });
+            const tends = document.getElementById('tends');
+            if (tends) vigIO.observe(tends);
+
+            const footerIO = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('drift');
+                    footerIO.unobserve(entry.target);
+                });
+            }, { threshold: 0.6 });
+            const footerQuote = document.querySelector('.footer-quote');
+            if (footerQuote) footerIO.observe(footerQuote);
+
+            const isPointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            if (isPointer) {
+                const dot = document.createElement('div');
+                dot.className = 'ghost-cursor';
+                document.body.appendChild(dot);
+                let tx = -20, ty = -20, cx = -20, cy = -20;
+                let lastMove = 0;
+                let rafId = null;
+                const tick = () => {
+                    cx += (tx - cx) * 0.12;
+                    cy += (ty - cy) * 0.12;
+                    dot.style.transform = `translate3d(${cx}px, ${cy}px, 0) translate(-50%, -50%)`;
+                    const idle = performance.now() - lastMove;
+                    if (idle > 800) dot.classList.remove('active');
+                    rafId = requestAnimationFrame(tick);
+                };
+                window.addEventListener('mousemove', (e) => {
+                    tx = e.clientX;
+                    ty = e.clientY;
+                    lastMove = performance.now();
+                    dot.classList.add('active');
+                    if (rafId === null) rafId = requestAnimationFrame(tick);
+                }, { passive: true });
+                window.addEventListener('mouseleave', () => dot.classList.remove('active'));
+            }
+        })();
+    </script>
+
+</body>
+</html>

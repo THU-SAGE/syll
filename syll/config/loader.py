@@ -1,0 +1,265 @@
+"""Configuration loading utilities."""
+
+import json
+import os
+import shutil
+import warnings
+from pathlib import Path
+from typing import Any
+
+from syll.config.schema import Config
+
+
+def get_config_path() -> Path:
+    """Get the default configuration file path."""
+    return Path.home() / ".syll" / "config.json"
+
+
+def get_data_dir() -> Path:
+    """Get the Syll data directory."""
+    from syll.utils.helpers import get_data_path
+    return get_data_path()
+
+
+def _migrate_legacy_env_vars() -> None:
+    """Copy any ``NANOBOT__*`` environment variables to their ``SYLL__*``
+    equivalents so users upgrading from the nanobot-era install keep working
+    without rewriting shell rc / .env / Docker / CI variables.
+
+    One-release backcompat window. Support will be removed in 0.3.0. Does not
+    clobber values the user has already set under the new ``SYLL__`` prefix.
+    """
+    migrated: list[tuple[str, str]] = []
+    for key in list(os.environ.keys()):
+        if not key.startswith("NANOBOT__"):
+            continue
+        new_key = "SYLL__" + key[len("NANOBOT__"):]
+        if new_key in os.environ:
+            continue  # user already set the new one; don't clobber
+        os.environ[new_key] = os.environ[key]
+        migrated.append((key, new_key))
+
+    if migrated:
+        pairs = ", ".join(f"{old}→{new}" for old, new in migrated)
+        warnings.warn(
+            f"Legacy NANOBOT__ environment variables detected and temporarily "
+            f"copied to SYLL__ equivalents ({pairs}). Support for the NANOBOT__ "
+            f"prefix will be removed in 0.3.0. Please rename your environment "
+            f"variables to use the SYLL__ prefix.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+
+def migrate_legacy_workspace() -> Path | None:
+    """If ``~/.nanobot/`` exists but ``~/.syll/`` does not, copy the full tree.
+
+    Transparent for users upgrading from the pre-rename install. The legacy
+    directory is left in place as an automatic backup; users can delete it
+    manually once they've confirmed the migration worked. Returns the target
+    path if migration ran, ``None`` otherwise.
+    """
+    legacy = Path.home() / ".nanobot"
+    target = Path.home() / ".syll"
+
+    if not legacy.exists():
+        return None
+    if target.exists():
+        return None  # already migrated or fresh install
+
+    try:
+        shutil.copytree(legacy, target)
+    except OSError as e:
+        warnings.warn(
+            f"Legacy workspace migration failed: {e}. Your ~/.nanobot/ is "
+            f"untouched. Please copy it to ~/.syll/ manually or open an issue.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return None
+
+    return target
+
+
+def load_config(config_path: Path | None = None) -> Config:
+    """
+    Load configuration from file or create default.
+
+    Runs the one-release legacy env-var migration first so
+    ``NANOBOT__TOOLS__GUI__ENABLED`` and friends still shape the returned
+    Config during the 0.2.x series.
+
+    Args:
+        config_path: Optional path to config file. Uses default if not provided.
+
+    Returns:
+        Loaded configuration object.
+    """
+    _migrate_legacy_env_vars()
+
+    path = config_path or get_config_path()
+
+    if path.exists():
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            data = _migrate_config(data)
+            return Config.model_validate(convert_keys(data))
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Warning: Failed to load config from {path}: {e}")
+            print("Using default configuration.")
+
+    return Config()
+
+
+def save_config(config: Config, config_path: Path | None = None) -> None:
+    """
+    Save configuration to file.
+
+    Args:
+        config: Configuration to save.
+        config_path: Optional path to save to. Uses default if not provided.
+    """
+    path = config_path or get_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Convert to camelCase format
+    data = config.model_dump()
+    data = convert_to_camel(data)
+
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def _migrate_config(data: dict) -> dict:
+    """Migrate old config formats to current."""
+    # Move tools.exec.restrictToWorkspace → tools.restrictToWorkspace
+    tools = data.get("tools", {})
+    exec_cfg = tools.get("exec", {})
+    if "restrictToWorkspace" in exec_cfg and "restrictToWorkspace" not in tools:
+        tools["restrictToWorkspace"] = exec_cfg.pop("restrictToWorkspace")
+
+    # Migrate provider-based config → purpose-based models config
+    if "providers" in data and "models" not in data:
+        providers = data.get("providers", {})
+        agents = data.get("agents", {})
+        defaults = agents.get("defaults", {})
+        gui = tools.get("gui", {})
+        ui_tars = gui.get("uiTars", gui.get("ui_tars", {}))
+
+        # Build the models config from old providers
+        models: dict = {}
+
+        # Chat: use the old default model + matching provider key
+        old_model = defaults.get("model", "")
+        if old_model:
+            chat_key = _find_provider_key(old_model, providers)
+            # Detect OpenRouter and prefix model for litellm
+            or_provider = providers.get("openrouter", {})
+            or_key = or_provider.get("apiKey", or_provider.get("api_key", ""))
+            if or_key and chat_key == or_key and not old_model.startswith("openrouter/"):
+                old_model = f"openrouter/{old_model}"
+            models["chat"] = {
+                "model": old_model,
+                "apiKey": chat_key,
+            }
+
+        # Actor: from gui.uiTars
+        if ui_tars.get("model") or ui_tars.get("apiKey") or ui_tars.get("apiBase"):
+            models["actor"] = {
+                "model": ui_tars.get("model", ""),
+                "apiKey": ui_tars.get("apiKey", ui_tars.get("api_key", "")),
+                "apiBase": ui_tars.get("apiBase", ui_tars.get("api_base", "")),
+            }
+
+        # Planner: from gui.plannerModel + matching provider key
+        planner_model = gui.get("plannerModel", gui.get("planner_model", ""))
+        if planner_model:
+            planner_key = _find_provider_key(planner_model, providers)
+            models["planner"] = {
+                "model": planner_model,
+                "apiKey": planner_key,
+            }
+
+        # STT: from providers.groq
+        groq = providers.get("groq", {})
+        if groq.get("apiKey") or groq.get("api_key"):
+            models["stt"] = {
+                "apiKey": groq.get("apiKey", groq.get("api_key", "")),
+            }
+
+        data["models"] = models
+
+        # Clean up migrated fields from gui
+        gui.pop("uiTars", None)
+        gui.pop("ui_tars", None)
+        gui.pop("plannerModel", None)
+        gui.pop("planner_model", None)
+        gui.pop("claudeApiKey", None)
+        gui.pop("claude_api_key", None)
+
+        # Remove old top-level providers (no longer in schema)
+        data.pop("providers", None)
+
+        # Remove old agents.defaults.model (moved to models.chat.model)
+        defaults.pop("model", None)
+
+    return data
+
+
+def _find_provider_key(model: str, providers: dict) -> str:
+    """Match a model name to its provider API key (for migration)."""
+    model_lower = model.lower()
+    keyword_map = {
+        "openrouter": "openrouter", "deepseek": "deepseek",
+        "anthropic": "anthropic", "claude": "anthropic",
+        "openai": "openai", "gpt": "openai",
+        "gemini": "gemini", "groq": "groq",
+        "zhipu": "zhipu", "glm": "zhipu",
+        "moonshot": "moonshot", "kimi": "moonshot",
+    }
+    for keyword, provider_name in keyword_map.items():
+        if keyword in model_lower:
+            provider = providers.get(provider_name, {})
+            return provider.get("apiKey", provider.get("api_key", ""))
+    # Fallback: return first available key
+    for p in providers.values():
+        if isinstance(p, dict):
+            key = p.get("apiKey", p.get("api_key", ""))
+            if key:
+                return key
+    return ""
+
+
+def convert_keys(data: Any) -> Any:
+    """Convert camelCase keys to snake_case for Pydantic."""
+    if isinstance(data, dict):
+        return {camel_to_snake(k): convert_keys(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [convert_keys(item) for item in data]
+    return data
+
+
+def convert_to_camel(data: Any) -> Any:
+    """Convert snake_case keys to camelCase."""
+    if isinstance(data, dict):
+        return {snake_to_camel(k): convert_to_camel(v) for k, v in data.items()}
+    if isinstance(data, list):
+        return [convert_to_camel(item) for item in data]
+    return data
+
+
+def camel_to_snake(name: str) -> str:
+    """Convert camelCase to snake_case."""
+    result = []
+    for i, char in enumerate(name):
+        if char.isupper() and i > 0:
+            result.append("_")
+        result.append(char.lower())
+    return "".join(result)
+
+
+def snake_to_camel(name: str) -> str:
+    """Convert snake_case to camelCase."""
+    components = name.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])

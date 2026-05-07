@@ -53,11 +53,24 @@ class Session:
         recent = self.messages[-max_messages:] if len(self.messages) > max_messages else self.messages
 
         out: list[dict[str, Any]] = []
+        pending_tool_call_ids: set[str] = set()
         for m in recent:
             msg: dict[str, Any] = {"role": m["role"], "content": m["content"]}
-            for key in ("tool_calls", "tool_call_id", "name"):
+            for key in ("tool_calls", "tool_call_id", "name", "reasoning_content"):
                 if key in m and m[key]:
                     msg[key] = m[key]
+            if msg["role"] == "tool":
+                tool_call_id = str(msg.get("tool_call_id") or "")
+                if tool_call_id not in pending_tool_call_ids:
+                    continue
+                pending_tool_call_ids.discard(tool_call_id)
+            else:
+                tool_calls = msg.get("tool_calls")
+                pending_tool_call_ids = {
+                    str(call.get("id") or "")
+                    for call in tool_calls
+                    if isinstance(call, dict) and call.get("id")
+                } if msg["role"] == "assistant" and isinstance(tool_calls, list) else set()
             out.append(msg)
         return out
 

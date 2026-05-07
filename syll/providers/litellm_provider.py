@@ -148,6 +148,7 @@ class LiteLLMProvider(LLMProvider):
         """Parse LiteLLM response into our standard format."""
         choice = response.choices[0]
         message = choice.message
+        reasoning_content = getattr(message, "reasoning_content", None)
 
         tool_calls = []
         if hasattr(message, "tool_calls") and message.tool_calls:
@@ -180,6 +181,9 @@ class LiteLLMProvider(LLMProvider):
             tool_calls=tool_calls,
             finish_reason=choice.finish_reason or "stop",
             usage=usage,
+            provider_extra={
+                "reasoning_content": reasoning_content,
+            } if reasoning_content else {},
         )
 
     def get_default_model(self) -> str:
@@ -221,6 +225,7 @@ class LiteLLMProvider(LLMProvider):
             response = await acompletion(**kwargs)
 
             accumulated_content = ""
+            accumulated_reasoning_content = ""
             tool_calls_acc: dict[int, dict] = {}
 
             async for chunk in response:
@@ -231,6 +236,12 @@ class LiteLLMProvider(LLMProvider):
                 if delta.content:
                     accumulated_content += delta.content
                     yield {"type": "token", "content": delta.content}
+
+                # DeepSeek-style thinking deltas (only emitted when the model
+                # produces reasoning before the final answer/tool call).
+                reasoning_delta = getattr(delta, "reasoning_content", None)
+                if reasoning_delta:
+                    accumulated_reasoning_content += reasoning_delta
 
                 # Tool call deltas
                 if hasattr(delta, "tool_calls") and delta.tool_calls:
@@ -262,7 +273,10 @@ class LiteLLMProvider(LLMProvider):
                     except (_json.JSONDecodeError, TypeError):
                         tc["arguments"] = {"raw": tc["arguments"]}
                     calls.append(tc)
-                yield {"type": "tool_calls", "calls": calls}
+                event: dict[str, Any] = {"type": "tool_calls", "calls": calls}
+                if accumulated_reasoning_content:
+                    event["reasoning_content"] = accumulated_reasoning_content
+                yield event
 
             yield {"type": "done"}
 

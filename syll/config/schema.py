@@ -161,6 +161,20 @@ class VoiceConfig(BaseModel):
     default_format: str = "mp3"
 
 
+# ── Startup ─────────────────────────────────────────────────────────────
+
+
+class StartupSoundConfig(BaseModel):
+    """Startup sound played once when ``syll wake`` initializes."""
+    enabled: bool = True
+    path: str = ""
+
+
+class StartupConfig(BaseModel):
+    """Startup-time user experience configuration."""
+    sound: StartupSoundConfig = Field(default_factory=StartupSoundConfig)
+
+
 # ── Gateway ────────────────────────────────────────────────────────────
 
 
@@ -250,6 +264,7 @@ class Config(BaseSettings):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
+    startup: StartupConfig = Field(default_factory=StartupConfig)
 
     @property
     def workspace_path(self) -> Path:

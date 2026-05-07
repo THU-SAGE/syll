@@ -1,5 +1,6 @@
 """Chat API route — REST and WebSocket."""
 
+import asyncio
 import base64
 import json
 import tempfile
@@ -122,7 +123,9 @@ async def chat_ws(websocket: WebSocket, session: str = "web:default"):
                 websocket.app.state.agent_activity_detail = ""
                 await websocket.send_json({"type": "error", "content": str(e)})
 
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        # Client closed the socket OR uvicorn cancelled the task during
+        # shutdown; both should drain quietly without a traceback.
         pass
     finally:
         if ws_clients is not None:

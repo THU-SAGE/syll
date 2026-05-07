@@ -202,11 +202,15 @@ def wake(
     if _migrated is not None:
         _print_legacy_migration_notice(_migrated)
 
+    config = load_config()
+
+    from syll.cli.startup_sound import play_startup_sound
+
+    play_startup_sound(config.startup.sound)
+
     from syll.cli.splash import run_splash
 
     run_splash()
-
-    config = load_config()
 
     # Missing-only migration: ensure shipped template files (IDENTITY.md,
     # lore/fragments.md, etc.) are present. Safe to call on every start.
@@ -361,10 +365,18 @@ def wake(
         ("endpoints", endpoints_rows),
     ]
 
-    async def handle_ask(text: str) -> str:
+    from syll.web.streaming import process_streaming
+
+    async def handle_ask_events(text: str):
         """Invoked when the user submits in the dashboard's input box."""
-        result = await agent.process_direct(text, session_key="cli:dashboard")
-        return result.text or "(empty response)"
+        async for event in process_streaming(
+            agent,
+            text,
+            "cli:dashboard",
+            channel="cli",
+            chat_id="dashboard",
+        ):
+            yield event
 
     from syll.cli.dashboard import (
         DashboardApp,
@@ -377,7 +389,7 @@ def wake(
         subtitle=f"v{__version__}  ·  a small ghost at the edge of your screen",
         sections=sections,
         footer="Ctrl+C rest  ·  Ctrl+L clear  ·  Ctrl+K focus input",
-        on_ask=handle_ask,
+        on_ask_events=handle_ask_events,
     )
     # Route loguru through the dashboard so service logs appear in the
     # right-hand activity pane instead of leaking behind the alt-screen.
@@ -414,17 +426,14 @@ def wake(
         # Spin services up as background tasks. The dashboard is the
         # "main" foreground — when it exits (Ctrl+C inside the TUI),
         # we cancel everything else.
-        service_coros = [
-            agent.run(),
-            channels.start_all(),
-            web_server.serve(),
-        ]
+        agent_task = asyncio.create_task(agent.run())
+        channels_task = asyncio.create_task(channels.start_all())
+        web_task = asyncio.create_task(web_server.serve())
+        service_tasks: list[asyncio.Task] = [agent_task, channels_task, web_task]
         if memory_agent:
-            service_coros.append(memory_agent.run_periodic())
+            service_tasks.append(asyncio.create_task(memory_agent.run_periodic()))
         if monitor_agent:
-            service_coros.append(monitor_agent.run_periodic())
-
-        service_tasks = [asyncio.create_task(c) for c in service_coros]
+            service_tasks.append(asyncio.create_task(monitor_agent.run_periodic()))
 
         try:
             await dashboard.run_async()
@@ -442,8 +451,19 @@ def wake(
                 await asyncio.wait_for(channels.stop_all(), timeout=3)
             except Exception:
                 pass
+            # Give uvicorn a graceful window to finish its own shutdown
+            # (drain in-flight requests, run the lifespan shutdown event,
+            # close the lifespan task). Cancelling before that races the
+            # lifespan task and starlette logs an ERROR traceback for the
+            # CancelledError. Waiting here keeps the exit silent.
+            if not web_task.done():
+                try:
+                    await asyncio.wait({web_task}, timeout=3.0)
+                except Exception:
+                    pass
             for task in service_tasks:
-                task.cancel()
+                if not task.done():
+                    task.cancel()
             await asyncio.gather(*service_tasks, return_exceptions=True)
 
     try:

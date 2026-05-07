@@ -36,6 +36,9 @@ async def process_streaming(
     content: str,
     session_key: str,
     media: list[str] | None = None,
+    *,
+    channel: str = "web",
+    chat_id: str | None = None,
 ) -> AsyncGenerator[dict[str, Any], None]:
     """Process a message with streaming output.
 
@@ -51,7 +54,7 @@ async def process_streaming(
 
     try:
         # Build message and session (reuse agent_loop internals)
-        chat_id = session_key.split(":", 1)[-1] if ":" in session_key else "default"
+        chat_id = chat_id or (session_key.split(":", 1)[-1] if ":" in session_key else "default")
         raw_content = content
         content = inject_skill_hint(agent_loop, content)
 
@@ -60,7 +63,7 @@ async def process_streaming(
             history=session.get_history(),
             current_message=content,
             media=media,
-            channel="web",
+            channel=channel,
             chat_id=chat_id,
             language_hint_text=raw_content,
         )
@@ -80,6 +83,7 @@ async def process_streaming(
             if hasattr(provider, "chat_stream"):
                 accumulated_content = ""
                 tool_calls_data: list[dict] = []
+                stream_reasoning_content: str | None = None
 
                 async for chunk in provider.chat_stream(
                     messages=messages,
@@ -91,6 +95,7 @@ async def process_streaming(
                         yield {"type": "token", "content": chunk["content"]}
                     elif chunk["type"] == "tool_calls":
                         tool_calls_data = chunk["calls"]
+                        stream_reasoning_content = chunk.get("reasoning_content")
                     elif chunk["type"] == "done":
                         pass
 
@@ -108,13 +113,19 @@ async def process_streaming(
                         for tc in tool_calls_data
                     ]
                     messages = agent_loop.context.add_assistant_message(
-                        messages, accumulated_content or None, tool_call_dicts
+                        messages,
+                        accumulated_content or None,
+                        tool_call_dicts,
+                        reasoning_content=stream_reasoning_content,
                     )
-                    turn_events.append({
+                    assistant_event: dict[str, Any] = {
                         "role": "assistant",
                         "content": accumulated_content or "",
                         "tool_calls": tool_call_dicts,
-                    })
+                    }
+                    if stream_reasoning_content:
+                        assistant_event["reasoning_content"] = stream_reasoning_content
+                    turn_events.append(assistant_event)
 
                     for tc in tool_calls_data:
                         yield {
@@ -166,14 +177,21 @@ async def process_streaming(
                         }
                         for tc in response.tool_calls
                     ]
+                    fallback_reasoning_content = response.provider_extra.get("reasoning_content")
                     messages = agent_loop.context.add_assistant_message(
-                        messages, response.content, tool_call_dicts
+                        messages,
+                        response.content,
+                        tool_call_dicts,
+                        reasoning_content=fallback_reasoning_content,
                     )
-                    turn_events.append({
+                    assistant_event: dict[str, Any] = {
                         "role": "assistant",
                         "content": response.content or "",
                         "tool_calls": tool_call_dicts,
-                    })
+                    }
+                    if fallback_reasoning_content:
+                        assistant_event["reasoning_content"] = fallback_reasoning_content
+                    turn_events.append(assistant_event)
 
                     for tc in response.tool_calls:
                         yield {
@@ -210,6 +228,13 @@ async def process_streaming(
 
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
+
+        # If the provider failed mid-turn (e.g. DeepSeek 400), don't persist
+        # the half-built turn — the orphan assistant/tool rows would re-trigger
+        # the same error on the next request. Surface the failure instead.
+        if final_content.startswith("Error calling LLM:"):
+            yield {"type": "error", "content": final_content}
+            return
 
         # Save to session — replay full turn so reload preserves tool_calls.
         session.add_message("user", raw_content)

@@ -31,6 +31,8 @@
     <a href="docs/lore.md">The Full Story · 故事</a>
     &nbsp;·&nbsp;
     <a href="https://thu-sage.github.io/syll/research.html">Research</a>
+    &nbsp;·&nbsp;
+    <a href="docs/report/syll-report-v1.pdf">Paper</a>
   </p>
 </div>
 

@@ -4,7 +4,7 @@
   <h1>Syll</h1>
 
   <p>
-    <em>a small, self-hosted AI companion<br/>
+    <em>A small, self-hosted AI companion<br/>
     who sits at the edge of your screen and quietly tends<br/>
     the things you almost forgot</em>
   </p>

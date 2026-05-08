@@ -14,6 +14,8 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
+from tests.test_app_factory import _admin_headers
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -49,7 +51,12 @@ def _make_config(tmp_dir: Path):
         models=SimpleNamespace(
             chat=SimpleNamespace(model="stub", api_key=None, api_base=None)
         ),
-        gateway=SimpleNamespace(host="127.0.0.1", port=18790),
+        gateway=SimpleNamespace(
+            host="127.0.0.1",
+            port=18790,
+            allow_remote_admin=False,
+            allow_origins=[],
+        ),
         agents=SimpleNamespace(defaults=SimpleNamespace(max_tool_iterations=5)),
         channels=SimpleNamespace(),
     )
@@ -81,7 +88,8 @@ def test_pet_api_supports_both_syll_and_ghost_routes(tmp_path, monkeypatch):
         cron_service=None,
     )
 
-    with TestClient(app_instance) as client:
+    with TestClient(app_instance, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         resp = client.get("/api/v1/syll/config")
         assert resp.status_code == 200
         assert resp.json()["size"] == "L"
@@ -114,7 +122,8 @@ def test_pet_svg_upload_rejects_path_traversal(tmp_path, monkeypatch):
         cron_service=None,
     )
 
-    with TestClient(app_instance) as client:
+    with TestClient(app_instance, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         resp = client.post(
             "/api/v1/syll/svgs",
             files={"file": ("../escape.svg", BytesIO(b"<svg/>"), "image/svg+xml")},
@@ -209,27 +218,35 @@ def test_cli_banner_uses_shared_syll_title_block():
 
 
 def test_index_html_prefers_syll_storage_keys_with_nanobot_fallback():
-    html = (ROOT / "syll" / "web" / "static" / "index.html").read_text(encoding="utf-8")
+    # Phase 1a moved the inline syllApp() factory into static/app.js.
+    # Storage-key invariants now live in app.js; the rest of the script
+    # surface (HTML markup) is still in index.html.
+    static = ROOT / "syll" / "web" / "static"
+    app_js = (static / "app.js").read_text(encoding="utf-8")
 
-    assert "localStorage.getItem('syll-theme')" in html
-    assert "localStorage.getItem('nanobot-theme')" in html
-    assert "localStorage.setItem('syll-theme', 'dark')" in html
-    assert "localStorage.setItem('syll-theme', 'light')" in html
-    assert "localStorage.setItem('nanobot-theme'" not in html
-    assert "localStorage.getItem('syll-syll-visible')" in html
-    assert "localStorage.getItem('nanobot-syll-visible')" in html
-    assert "localStorage.setItem('syll-syll-visible', this.syllVisible)" in html
+    assert "localStorage.getItem('syll-theme')" in app_js
+    assert "localStorage.getItem('nanobot-theme')" in app_js
+    assert "localStorage.setItem('syll-theme', 'dark')" in app_js
+    assert "localStorage.setItem('syll-theme', 'light')" in app_js
+    assert "localStorage.setItem('nanobot-theme'" not in app_js
+    assert "localStorage.getItem('syll-syll-visible')" in app_js
+    assert "localStorage.getItem('nanobot-syll-visible')" in app_js
+    assert "localStorage.setItem('syll-syll-visible', this.syllVisible)" in app_js
 
 
 def test_index_html_keeps_demo_recording_workbench_surface():
-    html = (ROOT / "syll" / "web" / "static" / "index.html").read_text(encoding="utf-8")
+    static = ROOT / "syll" / "web" / "static"
+    html = (static / "index.html").read_text(encoding="utf-8")
+    app_js = (static / "app.js").read_text(encoding="utf-8")
 
+    # Markup still in index.html
     assert '<div class="record-panel">' in html
     assert "record-live-layout" in html
     assert "record-preview-layout" in html
     assert "openRecorderView()" in html
     assert "recorderDraftStatusLabel()" in html
-    assert "return this.recorderStatus.status === 'recording' ? 'Capture Live' : 'Capture Workflow';" in html
+    # JS body moved to app.js after Phase 1a inline-script extraction
+    assert "return this.recorderStatus.status === 'recording' ? 'Capture Live' : 'Capture Workflow';" in app_js
 
 
 def test_index_html_keeps_memory_workspace_surface():
@@ -308,7 +325,8 @@ def test_chat_route_passes_raw_text_to_process_direct(tmp_path):
         cron_service=None,
     )
 
-    with TestClient(app_instance) as client:
+    with TestClient(app_instance, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         resp = client.post(
             "/api/v1/chat/message",
             json={"content": "帮我跑一下内部审批", "session_key": "web:test"},

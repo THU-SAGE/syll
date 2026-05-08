@@ -231,21 +231,77 @@ def _find_provider_key(model: str, providers: dict) -> str:
     return ""
 
 
-def convert_keys(data: Any) -> Any:
-    """Convert camelCase keys to snake_case for Pydantic."""
+# ── Path-aware key conversion ─────────────────────────────────────────
+#
+# Phase 1b finding (Critical): the global key converters mangle user-supplied
+# env var names ("OPENAI_API_KEY" → "OPENAIApiKey" → "o_p_e_n_a_i_api_key")
+# and HTTP/SSE header names. These dicts have ARBITRARY string keys provided
+# by the user and must be preserved verbatim across save/load roundtrips.
+#
+# `_PRESERVE_DICT_KEY_PATHS` enumerates the dotted paths whose immediate
+# DICT VALUES must keep their keys verbatim. The path components match keys
+# at every nesting level after `convert_*` walks the tree; a `*` matches any
+# key (used for the dict-of-server-name layer under `mcp.servers`).
+#
+# Examples covered:
+#   mcp.servers.<server-name>.stdio.env    — env var names
+#   mcp.servers.<server-name>.http.headers — HTTP header names
+#   mcp.servers.<server-name>.sse.headers  — SSE header names
+#   mcp.servers                            — server name keys themselves
+#
+# The server-name keys themselves are bound to ^[a-z][a-z0-9_]{0,30}$ so they
+# would survive snake_case/camelCase translation today, but we lock them in
+# as preserved-verbatim too so future relaxations don't silently break ids.
+
+_PRESERVE_DICT_KEY_PATHS = (
+    ("mcp", "servers"),                              # dict-of-server-name → server cfg
+    ("mcp", "servers", "*", "stdio", "env"),         # env var names
+    ("mcp", "servers", "*", "http", "headers"),      # HTTP header names
+    ("mcp", "servers", "*", "sse", "headers"),       # SSE header names
+)
+
+
+def _path_matches(actual: tuple[str, ...], pattern: tuple[str, ...]) -> bool:
+    if len(actual) != len(pattern):
+        return False
+    return all(p == "*" or p == a for a, p in zip(actual, pattern))
+
+
+def _is_preserve_path(path: tuple[str, ...]) -> bool:
+    return any(_path_matches(path, p) for p in _PRESERVE_DICT_KEY_PATHS)
+
+
+def convert_keys(data: Any, _path: tuple[str, ...] = ()) -> Any:
+    """Convert camelCase keys to snake_case for Pydantic.
+
+    Path-aware: under `_PRESERVE_DICT_KEY_PATHS`, the immediate dict's keys
+    are preserved verbatim (still recurses into values). This protects
+    arbitrary user-provided keys (env var names, HTTP header names, MCP
+    server names) from accidental case stomping.
+    """
     if isinstance(data, dict):
-        return {camel_to_snake(k): convert_keys(v) for k, v in data.items()}
+        if _is_preserve_path(_path):
+            return {k: convert_keys(v, _path + (k,)) for k, v in data.items()}
+        return {
+            camel_to_snake(k): convert_keys(v, _path + (camel_to_snake(k),))
+            for k, v in data.items()
+        }
     if isinstance(data, list):
-        return [convert_keys(item) for item in data]
+        return [convert_keys(item, _path) for item in data]
     return data
 
 
-def convert_to_camel(data: Any) -> Any:
-    """Convert snake_case keys to camelCase."""
+def convert_to_camel(data: Any, _path: tuple[str, ...] = ()) -> Any:
+    """Convert snake_case keys to camelCase, path-aware (see `convert_keys`)."""
     if isinstance(data, dict):
-        return {snake_to_camel(k): convert_to_camel(v) for k, v in data.items()}
+        if _is_preserve_path(_path):
+            return {k: convert_to_camel(v, _path + (k,)) for k, v in data.items()}
+        return {
+            snake_to_camel(k): convert_to_camel(v, _path + (snake_to_camel(k),))
+            for k, v in data.items()
+        }
     if isinstance(data, list):
-        return [convert_to_camel(item) for item in data]
+        return [convert_to_camel(item, _path) for item in data]
     return data
 
 

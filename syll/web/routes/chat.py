@@ -68,6 +68,12 @@ async def chat_ws(websocket: WebSocket, session: str = "web:default"):
     Client sends: {"type": "message", "content": "...", "media": [{"mime": "image/png", "data": "base64..."}]}
     Server sends: {"type": "token"|"tool_call"|"tool_result"|"done"|"error"|"cron_triggered", ...}
     """
+    # Auth: WS upgrades skip the AdminGuardMiddleware (they look like GETs),
+    # so we apply the same loopback / token / origin checks inline here.
+    from syll.web.auth import websocket_check_admin
+
+    if not await websocket_check_admin(websocket):
+        return  # close already sent
     await websocket.accept()
 
     # Register for server-originated broadcasts (e.g. cron_triggered)

@@ -1,8 +1,10 @@
 """Configuration schema using Pydantic."""
 
+import re
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -182,6 +184,8 @@ class GatewayConfig(BaseModel):
     """Gateway/server configuration."""
     host: str = "0.0.0.0"
     port: int = 18790
+    allow_remote_admin: bool = False
+    allow_origins: list[str] = Field(default_factory=list)
 
 
 # ── Tools ──────────────────────────────────────────────────────────────
@@ -252,6 +256,79 @@ class IdentityConfig(BaseModel):
     )
 
 
+# ── MCP (Model Context Protocol) ───────────────────────────────────────
+
+
+_MCP_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,30}$")
+
+
+class MCPStdioParams(BaseModel):
+    """Stdio launch parameters for an MCP server."""
+    command: str = Field(min_length=1)
+    args: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+    cwd: str | None = None
+
+
+class MCPHttpParams(BaseModel):
+    """Streamable-HTTP transport parameters for an MCP server."""
+    url: str
+    headers: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("url")
+    @classmethod
+    def _scheme(cls, v: str) -> str:
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("url must be http(s)://...")
+        return v
+
+
+class MCPSseParams(MCPHttpParams):
+    """SSE transport parameters. Same shape as HTTP but the SDK has separate
+    sse_client / streamable_http_client entry points."""
+
+
+class MCPServerConfig(BaseModel):
+    """One MCP server entry. Server name lives in the parent dict key."""
+    transport: Literal["stdio", "sse", "streamableHttp"] = "stdio"
+    stdio: MCPStdioParams | None = None
+    http: MCPHttpParams | None = None
+    sse: MCPSseParams | None = None
+    enabled: bool = False
+    enabled_tools: list[str] = Field(default_factory=lambda: ["*"])
+    propagate_to_subagents: bool = True
+    description: str = ""
+    tool_timeout_seconds: int = Field(default=60, ge=1, le=600)
+    # Consent token: sha256:<24hex> of (transport, params). Required to enable
+    # an stdio server. See syll/agent/mcp.py::command_hash.
+    confirmed_command_hash: str | None = None
+
+    @model_validator(mode="after")
+    def _transport_consistency(self):
+        attr_for = {"stdio": "stdio", "sse": "sse", "streamableHttp": "http"}
+        attr = attr_for[self.transport]
+        if getattr(self, attr) is None:
+            raise ValueError(f"transport={self.transport} requires {attr} params")
+        return self
+
+
+class MCPConfig(BaseModel):
+    """Root config block for the MCP client."""
+    enabled: bool = True
+    max_tools_per_server: int = Field(default=32, ge=1, le=512)
+    max_total_tools: int = Field(default=200, ge=1, le=2048)
+    servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _name_format(self):
+        for name in self.servers:
+            if not _MCP_NAME_RE.match(name):
+                raise ValueError(
+                    f"server name {name!r} must match {_MCP_NAME_RE.pattern}"
+                )
+        return self
+
+
 # ── Root config ────────────────────────────────────────────────────────
 
 
@@ -265,6 +342,7 @@ class Config(BaseSettings):
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
     startup: StartupConfig = Field(default_factory=StartupConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     @property
     def workspace_path(self) -> Path:

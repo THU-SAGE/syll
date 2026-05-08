@@ -177,7 +177,8 @@ def _migrate_workspace_templates(workspace: Path) -> None:
 
 @app.command()
 def wake(
-    port: int = typer.Option(18790, "--port", "-p", help="Listening port"),
+    port: int | None = typer.Option(None, "--port", "-p", help="Listening port"),
+    host: str | None = typer.Option(None, "--host", help="Web server host"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
     enable_memory_agent: bool = typer.Option(False, "--memory-agent", help="Enable Memory Agent"),
     enable_monitor_agent: bool = typer.Option(False, "--monitor-agent", help="Enable Monitor Agent"),
@@ -203,6 +204,13 @@ def wake(
         _print_legacy_migration_notice(_migrated)
 
     config = load_config()
+    host = host or config.gateway.host
+    port = port or config.gateway.port
+    # Keep CLI overrides and the in-memory gateway config in sync before
+    # create_app()/uvicorn so CSP, CORS, WebSocket origin checks, and the
+    # actual listener all agree on the same host/port.
+    config.gateway.host = host
+    config.gateway.port = port
 
     from syll.cli.startup_sound import play_startup_sound
 
@@ -249,6 +257,17 @@ def wake(
     cron_store_path = get_data_dir() / "cron" / "jobs.json"
     cron = CronService(cron_store_path)
 
+    # Build the MCP manager before AgentLoop so the loop can reload tools as
+    # soon as boot_validate + start succeed. boot_validate raises on tampered
+    # stdio config instead of silently disabling an unsafe server.
+    from syll.agent.mcp import MCPManager
+    mcp_manager = MCPManager(
+        config.mcp,
+        workspace_path=config.workspace_path,
+        restrict_to_workspace=config.tools.restrict_to_workspace,
+        broadcast=None,  # late-bound to web_app.state.broadcast_ws below
+    )
+
     # Create agent with cron service
     agent = AgentLoop(
         bus=bus,
@@ -262,6 +281,7 @@ def wake(
         restrict_to_workspace=config.tools.restrict_to_workspace,
         gui_config=config.tools.gui,
         syll_config=config,
+        mcp_manager=mcp_manager,
     )
 
     # Set cron callback (needs agent)
@@ -396,6 +416,16 @@ def wake(
     attach_loguru_to_dashboard(dashboard, level="DEBUG" if verbose else "INFO")
 
     async def run():
+        # Bring up MCP before scheduling agent.run() / channels. The first
+        # inbound message would otherwise see an empty MCP tool set.
+        try:
+            await mcp_manager.boot_validate()
+        except Exception as e:
+            logger.error(f"mcp boot_validate failed; aborting wake: {e}")
+            raise
+        await mcp_manager.start()
+        agent.reload_mcp_tools()
+
         # v3: create_app MUST come before cron.start() so the broadcast
         # wrapping is installed before any job can fire.
         import uvicorn
@@ -411,6 +441,9 @@ def wake(
         )
         # v3: attach channel_manager so POST /api/v1/cron/jobs can validate deliver
         web_app.state.channel_manager = channels
+        web_app.state.mcp_manager = mcp_manager
+        # Late-bind the broadcast hook now that the FastAPI app exists.
+        mcp_manager.broadcast = web_app.state.broadcast_ws
 
         await cron.start()
         await heartbeat.start()
@@ -451,6 +484,12 @@ def wake(
                 await asyncio.wait_for(channels.stop_all(), timeout=3)
             except Exception:
                 pass
+            # Stop MCP before draining the agent task; the agent must not be
+            # invoking MCP tools while we close their transports.
+            try:
+                await asyncio.wait_for(mcp_manager.stop(), timeout=10)
+            except Exception as e:
+                logger.warning(f"mcp_manager.stop() failed: {e}")
             # Give uvicorn a graceful window to finish its own shutdown
             # (drain in-flight requests, run the lifespan shutdown event,
             # close the lifespan task). Cancelling before that races the
@@ -479,7 +518,8 @@ def wake(
 
 @app.command("gateway", hidden=True)
 def gateway(
-    port: int = typer.Option(18790, "--port", "-p", help="Listening port"),
+    port: int | None = typer.Option(None, "--port", "-p", help="Listening port"),
+    host: str | None = typer.Option(None, "--host", help="Web server host"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
     enable_memory_agent: bool = typer.Option(False, "--memory-agent"),
     enable_monitor_agent: bool = typer.Option(False, "--monitor-agent"),
@@ -487,6 +527,7 @@ def gateway(
     """Deprecated alias for ``syll wake`` — kept for muscle memory."""
     wake(
         port=port,
+        host=host,
         verbose=verbose,
         enable_memory_agent=enable_memory_agent,
         enable_monitor_agent=enable_monitor_agent,
@@ -577,8 +618,8 @@ def agent(
 
 @app.command()
 def web(
-    port: int = typer.Option(None, "--port", "-p", help="Web server port"),
-    host: str = typer.Option(None, "--host", help="Web server host"),
+    port: int | None = typer.Option(None, "--port", "-p", help="Web server port"),
+    host: str | None = typer.Option(None, "--host", help="Web server host"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
     """Start the Syll web UI."""
@@ -606,6 +647,10 @@ def web(
     _migrate_workspace_templates(config.workspace_path)
     host = host or config.gateway.host
     port = port or config.gateway.port
+    # Keep config in sync with CLI overrides before create_app(), otherwise
+    # CSP/CORS and WebSocket origin checks use stale host/port values.
+    config.gateway.host = host
+    config.gateway.port = port
 
     chat = config.models.chat
     model = chat.model
@@ -625,6 +670,15 @@ def web(
         api_base=api_base,
         default_model=model,
     )
+    # Build MCP manager before AgentLoop so the loop owns the pointer; the
+    # FastAPI lifespan below will start and stop it for the web-only entrypoint.
+    from syll.agent.mcp import MCPManager
+    mcp_manager = MCPManager(
+        config.mcp,
+        workspace_path=config.workspace_path,
+        restrict_to_workspace=config.tools.restrict_to_workspace,
+        broadcast=None,
+    )
     agent_loop = AgentLoop(
         bus=bus,
         provider=provider,
@@ -635,6 +689,7 @@ def web(
         restrict_to_workspace=config.tools.restrict_to_workspace,
         gui_config=config.tools.gui,
         syll_config=config,
+        mcp_manager=mcp_manager,
     )
 
     # Create cron service for GUI skill scheduling
@@ -661,6 +716,10 @@ def web(
         memory_store=agent_loop.context.memory,
         cron_service=cron,
     )
+    # Web-only entrypoints let the FastAPI lifespan own MCP startup/shutdown.
+    web_app.state.mcp_manager = mcp_manager
+    web_app.state.manage_mcp_lifecycle = True
+    mcp_manager.broadcast = web_app.state.broadcast_ws
 
     from syll.cli.banner import configure_warm_logging, render_boot_report
     from syll.cli.splash import run_splash
@@ -693,6 +752,117 @@ def splash():
     from syll.cli.splash import run_splash
 
     run_splash()
+
+
+# ============================================================================
+# Admin token management
+# ============================================================================
+
+admin_app = typer.Typer(help="Admin token management for the Syll web gateway.")
+app.add_typer(admin_app, name="admin")
+
+
+@admin_app.command("token")
+def admin_token_cmd(
+    rotate: bool = typer.Option(False, "--rotate", help="Generate a new token, replacing the current one."),
+):
+    """Print the current admin token (or rotate it).
+
+    The token is stored at ~/.syll/admin_token (mode 0600). It is created on
+    first boot and persists across restarts so a long-lived Pet UI keeps
+    working. Pass --rotate, or call POST /api/v1/admin-token/rotate, to
+    invalidate any leaked previous token.
+    """
+    from syll.web.auth import get_admin_token, rotate_admin_token
+
+    if rotate:
+        token = rotate_admin_token()
+        console.print(f"[green]rotated[/green]  {token}")
+    else:
+        token = get_admin_token()
+        if not token:
+            console.print(
+                "[yellow]no admin token on disk yet[/yellow] — start `syll wake` "
+                "or `syll web` once, or run `syll admin token --rotate`."
+            )
+            raise typer.Exit(code=1)
+        console.print(token)
+
+
+# ============================================================================
+# MCP bridge install
+# ============================================================================
+
+bridge_app = typer.Typer(help="Manage out-of-tree MCP bridges (Stagehand etc.).")
+app.add_typer(bridge_app, name="bridge")
+
+
+@bridge_app.command("list")
+def bridge_list_cmd():
+    """List known MCP bridges and their install status."""
+    from syll.agent.mcp_bridges import list_installed
+
+    rows = list_installed()
+    if not rows:
+        console.print("[yellow]no bridges in the allowlist yet[/yellow]")
+        return
+    for row in rows:
+        status = "[green]installed[/green]" if row["installed"] else (
+            "[dim]available[/dim]" if row["released"] else "[yellow]not yet released[/yellow]"
+        )
+        manifest = row.get("manifest") or {}
+        tag = manifest.get("tag") or row["default_tag"]
+        console.print(f"  {row['name']:12} {status}  ({tag})")
+
+
+@bridge_app.command("install")
+def bridge_install_cmd(
+    name: str = typer.Argument(..., help="Bridge name, for example 'stagehand'"),
+    version: str | None = typer.Option(None, "--version", help="Pinned tag; default = bridge's default_tag"),
+    force: bool = typer.Option(False, "--force", help="Reinstall over an existing dir"),
+):
+    """Clone, build, and verify a bridge into ~/.syll/bridges/<name>/."""
+    import asyncio
+
+    from syll.agent.mcp_bridges import (
+        BridgeInstallError,
+        BridgeNotReleasedError,
+        install_bridge,
+    )
+
+    async def _emit(p):
+        import sys
+
+        sys.stderr.write(f"  | {p.line}\n")
+        sys.stderr.flush()
+
+    try:
+        asyncio.run(install_bridge(name, version=version, progress=_emit, force=force))
+        console.print(f"[green]✓[/green] bridge {name!r} installed")
+    except BridgeNotReleasedError as e:
+        console.print(f"[yellow]not yet released:[/yellow] {e}")
+        raise typer.Exit(code=2)
+    except BridgeInstallError as e:
+        console.print(f"[red]install failed:[/red] {e}")
+        raise typer.Exit(code=1)
+
+
+@bridge_app.command("uninstall")
+def bridge_uninstall_cmd(name: str = typer.Argument(...)):
+    """Remove an installed bridge directory."""
+    import asyncio
+
+    from syll.agent.mcp_bridges import BridgeInstallError, uninstall_bridge
+
+    try:
+        removed = asyncio.run(uninstall_bridge(name))
+    except BridgeInstallError as e:
+        console.print(f"[red]error:[/red] {e}")
+        raise typer.Exit(code=1)
+    if removed:
+        console.print(f"[green]✓[/green] bridge {name!r} removed")
+    else:
+        console.print(f"[dim]bridge {name!r} was not installed[/dim]")
 
 
 # ============================================================================

@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from syll.cron.service import CronService, _now_ms
 from syll.cron.types import CronJob, CronPayload, CronSchedule
 from syll.web.app import create_app
+from tests.test_app_factory import _admin_headers
 
 # ---------- Stubs ----------
 
@@ -37,7 +38,12 @@ def _make_config(tmp_dir: Path):
         models=SimpleNamespace(
             chat=SimpleNamespace(model="stub", api_key=None, api_base=None)
         ),
-        gateway=SimpleNamespace(host="127.0.0.1", port=18790),
+        gateway=SimpleNamespace(
+            host="127.0.0.1",
+            port=18790,
+            allow_remote_admin=False,
+            allow_origins=[],
+        ),
         agents=SimpleNamespace(defaults=SimpleNamespace(max_tool_iterations=5)),
         channels=SimpleNamespace(),
     )
@@ -93,7 +99,8 @@ def test_cron_lifecycle_idempotent():
 
 def test_capabilities_without_channel_manager():
     app, _, _ = _build_app(channel_manager=None)
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.get("/api/v1/cron/capabilities")
         assert r.status_code == 200
         data = r.json()
@@ -104,7 +111,8 @@ def test_capabilities_without_channel_manager():
 def test_capabilities_with_channel_manager():
     cm = SimpleNamespace(enabled_channels=["telegram", "feishu"])
     app, _, _ = _build_app(channel_manager=cm)
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.get("/api/v1/cron/capabilities")
         assert r.status_code == 200
         data = r.json()
@@ -117,7 +125,8 @@ def test_capabilities_with_channel_manager():
 
 def test_cron_crud_flow():
     app, cron, _ = _build_app()
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         # Empty list
         r = client.get("/api/v1/cron/jobs")
         assert r.status_code == 200
@@ -157,7 +166,8 @@ def test_cron_crud_flow():
 
 def test_create_rejects_invalid_cron():
     app, _, _ = _build_app()
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.post(
             "/api/v1/cron/jobs",
             json={
@@ -174,7 +184,8 @@ def test_create_rejects_invalid_cron():
 
 def test_create_rejects_expired_at():
     app, _, _ = _build_app()
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.post(
             "/api/v1/cron/jobs",
             json={
@@ -190,7 +201,8 @@ def test_create_rejects_expired_at():
 
 def test_delete_missing_returns_404():
     app, _, _ = _build_app()
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.delete("/api/v1/cron/jobs/does-not-exist")
         assert r.status_code == 404
 
@@ -200,7 +212,8 @@ def test_delete_missing_returns_404():
 
 def test_deliver_rejected_without_channel_manager():
     app, _, _ = _build_app(channel_manager=None)
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.post(
             "/api/v1/cron/jobs",
             json={
@@ -221,7 +234,8 @@ def test_deliver_rejected_without_channel_manager():
 def test_deliver_rejected_for_unknown_channel():
     cm = SimpleNamespace(enabled_channels=["telegram"])
     app, _, _ = _build_app(channel_manager=cm)
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.post(
             "/api/v1/cron/jobs",
             json={
@@ -242,7 +256,8 @@ def test_deliver_rejected_for_unknown_channel():
 def test_deliver_accepted_with_enabled_channel():
     cm = SimpleNamespace(enabled_channels=["telegram"])
     app, _, _ = _build_app(channel_manager=cm)
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.post(
             "/api/v1/cron/jobs",
             json={
@@ -285,7 +300,8 @@ def test_legacy_metadata_fallback():
 
     asyncio.run(_inject())
 
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.get("/api/v1/cron/jobs")
         jobs = r.json()["jobs"]
         legacy = [j for j in jobs if j["id"] == "legacy1"]
@@ -320,7 +336,8 @@ def test_patch_reenable_expired_at_rolls_back():
 
     asyncio.run(_setup())
 
-    with TestClient(app) as client:
+    with TestClient(app, client=("127.0.0.1", 12345)) as client:
+        client.headers.update(_admin_headers(client))
         r = client.patch("/api/v1/cron/jobs/expired", json={"enabled": True})
         assert r.status_code == 400
         assert "expired" in r.json()["detail"].lower() or "invalid" in r.json()["detail"].lower()
@@ -360,7 +377,8 @@ def test_run_now_disabled_recurring_no_zombie_next_run():
         await cron.start()
 
         # Create an every-60s job
-        with TestClient(app) as client:
+        with TestClient(app, client=("127.0.0.1", 12345)) as client:
+            client.headers.update(_admin_headers(client))
             r = client.post(
                 "/api/v1/cron/jobs",
                 json={
@@ -404,7 +422,8 @@ def test_run_now_returns_error_on_exception():
         cron.on_job = failing
         await cron.start()
 
-        with TestClient(app) as client:
+        with TestClient(app, client=("127.0.0.1", 12345)) as client:
+            client.headers.update(_admin_headers(client))
             r = client.post(
                 "/api/v1/cron/jobs",
                 json={

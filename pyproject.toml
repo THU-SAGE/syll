@@ -42,6 +42,9 @@ dependencies = [
     "opencv-python>=4.8.0",
     "PyQt6>=6.6.0",
     "PyQt6-WebEngine>=6.6.0",
+    # Phase 1b: MCP client + JSON Schema validator for MCPTool.validate_params
+    "mcp>=1.27,<2.0",
+    "jsonschema>=4.20",
 ]
 
 [project.optional-dependencies]

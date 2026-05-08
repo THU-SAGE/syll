@@ -38,6 +38,15 @@
 
 ---
 
+## Feature news
+
+- **MCP servers are now first-class tools.** Configure stdio, SSE, and streamable-HTTP MCP servers from the Pet UI; Syll loads them into the agent as namespaced `mcp__server__tool` tools before the first message.
+- **Safer MCP activation flow.** Local stdio servers require a command preview + hash confirmation before anything launches, while env/header secrets stay masked in MCP responses and out of `/api/v1/config`.
+- **Playwright MCP template.** The built-in template uses pinned `@playwright/mcp`, a headless system Chrome default, one-click Enable/Disable, reconnect, tool checkboxes, and a chat-input MCP status picker.
+- **Static asset refresh polish.** The web app now cache-busts bundled JS/CSS assets so UI changes reach the browser without stale `app.js` surprises after the next restart.
+
+---
+
 ## Quick start
 
 Syll works with any Python 3.11+ environment. Pick either main path, then run the shared install steps.

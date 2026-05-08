@@ -3,6 +3,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -10,6 +11,9 @@ from syll.agent.context import ContextBuilder
 from syll.agent.events import Event, EventContent, EventSource, EventStore
 from syll.agent.result import AgentResult
 from syll.agent.subagent import SubagentManager
+
+if TYPE_CHECKING:
+    from syll.agent.mcp import MCPManager
 from syll.agent.tools.attach_file import AttachFileTool
 from syll.agent.tools.base import ToolResult
 from syll.agent.tools.cron import CronTool
@@ -53,6 +57,7 @@ class AgentLoop:
         restrict_to_workspace: bool = False,
         gui_config: "GuiConfig | None" = None,
         syll_config: "Config | None" = None,
+        mcp_manager: "MCPManager | None" = None,
     ):
         from syll.config.schema import ExecToolConfig
         self.bus = bus
@@ -66,6 +71,7 @@ class AgentLoop:
         self.restrict_to_workspace = restrict_to_workspace
         self.gui_config = gui_config
         self.syll_config = syll_config
+        self.mcp_manager = mcp_manager
 
         identity = syll_config.identity if syll_config else None
         self.context = ContextBuilder(workspace, identity=identity)
@@ -79,11 +85,58 @@ class AgentLoop:
             brave_api_key=brave_api_key,
             exec_config=self.exec_config,
             restrict_to_workspace=restrict_to_workspace,
+            mcp_manager=mcp_manager,
         )
         self.event_store = EventStore(workspace.parent)
 
+        # Phase 1c: track which tool names are owned by the MCP manager so
+        # `reload_mcp_tools` can unregister exactly those (no prefix-strip
+        # — see syll/agent/mcp.py docstring) without clobbering non-MCP
+        # tools whose names happen to start with "mcp__".
+        self._mcp_owned: set[str] = set()
+
         self._running = False
         self._register_default_tools()
+
+    def reload_mcp_tools(self) -> int:
+        """(Re)register MCP tools on `self.tools` from the manager.
+
+        Idempotent. Unregisters exactly the names this loop previously
+        owned (`self._mcp_owned`) — never prefix-strips on `mcp__*` because
+        a non-MCP tool could be named that way too. Refuses to clobber a
+        non-MCP tool whose name collides with an MCP adapter's; in that
+        case the MCP tool is skipped with a warning.
+
+        Call this:
+          - At gateway boot, AFTER `MCPManager.start()` has connected.
+          - On every `apply_server`/`remove_server` from the HTTP route
+            (so the live tool set tracks config changes).
+
+        Returns the number of MCP tools registered after the reload.
+        """
+        # Step 1: drop the old set.
+        for owned_name in list(self._mcp_owned):
+            self.tools.unregister(owned_name)
+        self._mcp_owned.clear()
+
+        if self.mcp_manager is None:
+            return 0
+
+        # Step 2: register every adapter from the manager.
+        registered = 0
+        for adapter in self.mcp_manager.iter_enabled_tools():
+            n = adapter.name
+            if self.tools.has(n):
+                logger.warning(
+                    f"reload_mcp_tools: name {n!r} collides with an existing "
+                    "non-MCP tool; skipping the MCP adapter to avoid clobber"
+                )
+                continue
+            self.tools.register(adapter)
+            self._mcp_owned.add(n)
+            registered += 1
+        logger.info(f"reload_mcp_tools: {registered} MCP tool(s) registered")
+        return registered
 
     def _register_default_tools(self) -> None:
         """Register the default set of tools."""

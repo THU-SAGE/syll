@@ -34,7 +34,12 @@ def _make_config(tmp_dir):
         models=SimpleNamespace(
             chat=SimpleNamespace(model="stub", api_key=None, api_base=None)
         ),
-        gateway=SimpleNamespace(host="127.0.0.1", port=18790),
+        gateway=SimpleNamespace(
+            host="127.0.0.1",
+            port=18790,
+            allow_remote_admin=False,
+            allow_origins=[],
+        ),
         agents=SimpleNamespace(defaults=SimpleNamespace(max_tool_iterations=5)),
         channels=SimpleNamespace(),
     )
@@ -45,6 +50,27 @@ def _make_agent_loop():
         sessions=SimpleNamespace(),
         context=SimpleNamespace(skills=SimpleNamespace(), memory=SimpleNamespace()),
     )
+
+
+def _admin_headers(client):
+    """Fetch the admin token (loopback-only) and return a header dict.
+
+    Used by tests that exercise mutating endpoints under the
+    AdminGuardMiddleware. TestClient's default `client.host=='testclient'`
+    is NOT loopback, so callers must construct TestClient with
+    `client=("127.0.0.1", N)` to be able to obtain the token in the first
+    place. After Phase 1a, every POST/PUT/PATCH/DELETE on `/api/v1/*` is
+    gated; mutating tests must thread these headers through.
+    """
+    resp = client.get(
+        "/api/v1/admin-token",
+        headers={"Origin": "http://localhost:18790"},
+    )
+    assert resp.status_code == 200, f"could not bootstrap token: {resp.text}"
+    return {
+        "X-Syll-Admin-Token": resp.json()["token"],
+        "Origin": "http://localhost:18790",
+    }
 
 
 def test_create_app_starts_cron_via_lifespan():

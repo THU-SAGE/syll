@@ -4,7 +4,7 @@ import asyncio
 import json
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -15,6 +15,9 @@ from syll.agent.tools.web import WebFetchTool, WebSearchTool
 from syll.bus.events import InboundMessage
 from syll.bus.queue import MessageBus
 from syll.providers.base import LLMProvider
+
+if TYPE_CHECKING:
+    from syll.agent.mcp import MCPManager
 
 
 class SubagentManager:
@@ -35,6 +38,7 @@ class SubagentManager:
         brave_api_key: str | None = None,
         exec_config: "ExecToolConfig | None" = None,
         restrict_to_workspace: bool = False,
+        mcp_manager: "MCPManager | None" = None,
     ):
         from syll.config.schema import ExecToolConfig
         self.provider = provider
@@ -44,6 +48,7 @@ class SubagentManager:
         self.brave_api_key = brave_api_key
         self.exec_config = exec_config or ExecToolConfig()
         self.restrict_to_workspace = restrict_to_workspace
+        self.mcp_manager = mcp_manager
         self._running_tasks: dict[str, asyncio.Task[None]] = {}
 
     async def spawn(
@@ -109,6 +114,27 @@ class SubagentManager:
             ))
             tools.register(WebSearchTool(api_key=self.brave_api_key))
             tools.register(WebFetchTool())
+
+            # Phase 1c: propagate MCP tools whose servers opted into
+            # `propagate_to_subagents`. Built fresh per spawn — no shared
+            # mutable state, so MCP hot-reload naturally affects the next
+            # subagent. Skip on collision with a builtin (defense in depth;
+            # subagents have a smaller registry so collisions are unlikely).
+            if self.mcp_manager is not None:
+                propagated = 0
+                for adapter in self.mcp_manager.iter_propagating_tools():
+                    if tools.has(adapter.name):
+                        logger.warning(
+                            f"subagent[{task_id}] MCP tool {adapter.name!r} "
+                            "collides with builtin; skipping"
+                        )
+                        continue
+                    tools.register(adapter)
+                    propagated += 1
+                if propagated:
+                    logger.info(
+                        f"subagent[{task_id}] propagated {propagated} MCP tool(s)"
+                    )
 
             # Build messages with subagent-specific prompt
             system_prompt = self._build_subagent_prompt(task)

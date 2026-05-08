@@ -4,12 +4,13 @@ import copy
 import re
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
 from pydantic import BaseModel
 
 from syll.config.loader import load_config, save_config
 from syll.config.schema import Config, IdentityConfig
+from syll.web.auth import require_admin
 
 router = APIRouter(tags=["config"])
 
@@ -82,25 +83,77 @@ def _serialize_identity(identity: IdentityConfig) -> dict:
 
 @router.get("/config")
 async def get_config():
-    """Return the full config with sensitive fields masked."""
+    """Return the full config with sensitive fields masked.
+
+    Phase 3 review-pass-6 (Critical): MCP `stdio.env` and HTTP/SSE `headers`
+    have ARBITRARY user-supplied keys (`Authorization`, `MY_SECRET`, etc.)
+    that the generic `_mask_sensitive` regex doesn't cover. We mask MCP
+    env/headers via the dedicated walker, then strip the `mcp` section
+    entirely from the response so this endpoint is never the place that
+    leaks an MCP secret. The Pet UI uses `/api/v1/mcp` for MCP — single
+    source of truth for that subtree. A defensive client (`saveConfig`)
+    also strips `mcp` from PUT bodies.
+    """
+    from syll.web.routes._mcp_merge import mask_mcp_config_dict
+
     config = load_config()
     data = config.model_dump()
     if isinstance(data.get("identity"), dict):
         data["identity"]["syll_name"] = data["identity"].get("ghost_name", "")
-    return _mask_sensitive(data)
+    # Mask MCP env/headers BEFORE stripping — defense in depth in case the
+    # strip is lifted in a future commit.
+    if isinstance(data.get("mcp"), dict):
+        data["mcp"] = mask_mcp_config_dict(data["mcp"])
+    masked = _mask_sensitive(data)
+    # Strip MCP from the response. UI must use /api/v1/mcp.
+    masked.pop("mcp", None)
+    return masked
 
 
-@router.put("/config")
+@router.put("/config", dependencies=[Depends(require_admin)])
 async def update_config(body: dict, request: Request):
     """Update and persist config.
 
     Masked fields (starting with '...') are left unchanged.
     When gui.enabled changes, hot-reload GUI tools in the agent loop.
+
+    Phase 3: `mcp.*` is read-only via this endpoint. The dedicated route
+    `/api/v1/mcp/servers/{name}` owns the consent/hash flow and is the only
+    place an MCP change can land. We tolerate masked round-trips (a full
+    GET-then-PUT from the Config tab) by mask-restoring the mcp section
+    before computing the diff; only a real change forces 400.
     """
     current = load_config()
     current_data = current.model_dump()
     old_gui_config = current.tools.gui.model_dump()
     old_identity = current.identity.model_dump()
+
+    # Phase 3: reject mcp.* mutations from this endpoint.
+    incoming_mcp = body.get("mcp")
+    if incoming_mcp is not None:
+        from syll.web.routes._mcp_merge import restore_masked_mcp_server
+
+        old_mcp = current_data.get("mcp", {}) or {}
+        old_servers = (old_mcp.get("servers") or {}) if isinstance(old_mcp, dict) else {}
+        new_servers_in = (incoming_mcp.get("servers") or {}) if isinstance(incoming_mcp, dict) else {}
+        # Mask-restore each server pair-by-name before comparing.
+        restored_servers: dict = {}
+        for name, srv in new_servers_in.items():
+            if isinstance(srv, dict):
+                restored_servers[name] = restore_masked_mcp_server(srv, old_servers.get(name))
+            else:
+                restored_servers[name] = srv
+        restored_mcp = {**incoming_mcp, "servers": restored_servers}
+        if restored_mcp != old_mcp:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "mcp.* is read-only via /api/v1/config; use "
+                    "/api/v1/mcp/servers/{name} to make MCP changes"
+                ),
+            )
+        # Equal-after-mask-restore — strip from body and continue.
+        body = {k: v for k, v in body.items() if k != "mcp"}
 
     # Deep-merge first so partial payloads (e.g. just {identity: ...}) don't
     # wipe other top-level sections, then resolve masked sensitive fields.
@@ -223,7 +276,7 @@ def _clean_chat_id(raw: str | None, channel: str | None) -> str | None:
     return cleaned
 
 
-@router.put("/identity")
+@router.put("/identity", dependencies=[Depends(require_admin)])
 async def update_identity(body: IdentityUpdate, request: Request):
     """Update the identity section. Partial payloads are merged with the
     current values (None means 'leave unchanged'). Hot-reloads agent context."""

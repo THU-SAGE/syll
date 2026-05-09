@@ -1,0 +1,93 @@
+<div class="day-header">
+    <h3>{{ date }}</h3>
+    <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="im_agent">IM</button>
+        <button class="filter-btn" data-filter="gui_agent">GUI</button>
+        <button class="filter-btn" data-filter="memory_agent">Memory</button>
+        <button class="filter-btn" data-filter="monitor_agent">Monitor</button>
+    </div>
+</div>
+
+<!-- Hourly Distribution Chart -->
+<div class="chart-container">
+    <canvas id="hourly-chart"></canvas>
+</div>
+
+<!-- Event List -->
+<div class="event-list">
+    {% for event in events %}
+    <div class="event-item" data-agent="{{ event.agent_type }}">
+        <div class="event-icon">{{ agent_icons[event.agent_type] }}</div>
+        <div class="event-content">
+            <div class="event-time">{{ event.timestamp }}</div>
+            <div class="event-summary">{{ event.summary }}</div>
+            {% if event.has_media %}
+            <span class="media-badge">📷</span>
+            {% endif %}
+        </div>
+        <button class="event-expand"
+                hx-get="/api/v1/dashboard/events/{{ event.id }}"
+                hx-target="#event-detail-modal"
+                hx-swap="innerHTML">
+            →
+        </button>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Event Detail Modal (HTMX target) -->
+<div id="event-detail-modal" class="modal"></div>
+
+<script>
+    // Initialize hourly chart
+    const ctx = document.getElementById('hourly-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+            datasets: [{
+                label: 'Events per Hour',
+                data: {{ hourly_distribution | tojson }},
+                backgroundColor: 'rgba(52, 211, 153, 0.6)',
+                borderColor: 'rgba(52, 211, 153, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: '#374151' }
+                },
+                x: {
+                    ticks: { color: '#9ca3af' },
+                    grid: { color: '#374151' }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const filter = btn.dataset.filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            document.querySelectorAll('.event-item').forEach(item => {
+                if (filter === 'all' || item.dataset.agent === filter) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>

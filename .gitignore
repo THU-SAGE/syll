@@ -1,0 +1,46 @@
+.assets
+.env
+
+# Python artifacts
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzz
+__pycache__/
+*.egg-info/
+*.egg
+.venv/
+dist/
+build/
+poetry.lock
+.pytest_cache/
+.ruff_cache/
+
+# OS / editor
+.DS_Store
+
+# Release hygiene
+# Keep local side-projects, raw media, and private notes out of public snapshots.
+
+# Adjacent research projects (kept on local disk under the main worktree, never shipped)
+/clawd-on-desk
+/OpenClawVL
+/ShowUI-Aloha
+/UI-TARS-desktop
+/study
+
+# Orphan root-level workspace; packaged defaults live under syll/templates/workspace/.
+/workspace
+
+
+# Personal dev notes (untracked, never ship, kept locally on main worktree)
+/plan1.md
+/ALOHA_INTEGRATION_REVIEW.md
+/GUI_DEMO_EXECUTION_ANALYSIS.md
+
+# Local source media dropped at repo root; optimized public assets live under docs/media/
+/*.mp4
+/image.png

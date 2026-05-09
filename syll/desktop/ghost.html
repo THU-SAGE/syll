@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+#ghost-container {
+    width: 100%;
+    height: 100%;
+    padding: 2px;
+    box-sizing: border-box;
+    position: relative;
+    transform-origin: center center;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    will-change: transform;
+}
+#ghost-container object {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+}
+/* Shake animation when being poked — subtle wobble */
+@keyframes ghost-shake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) translateZ(0); }
+    20% { transform: translate(-1.5px, 0) rotate(-1deg) translateZ(0); }
+    40% { transform: translate(1.5px, 0) rotate(1deg) translateZ(0); }
+    60% { transform: translate(-1px, 0) rotate(-0.5deg) translateZ(0); }
+    80% { transform: translate(1px, 0) rotate(0.5deg) translateZ(0); }
+}
+.shake {
+    animation: ghost-shake 0.4s ease-out;
+}
+/* Wake bounce: gentle squash + lift — magnitudes kept inside container padding */
+@keyframes ghost-wake {
+    0%   { transform: scale(1, 1) translateY(0) translateZ(0); }
+    25%  { transform: scale(1.03, 0.97) translateY(1px) translateZ(0); }
+    50%  { transform: scale(0.98, 1.02) translateY(-2px) translateZ(0); }
+    75%  { transform: scale(1.01, 0.99) translateY(-1px) translateZ(0); }
+    100% { transform: scale(1, 1) translateY(0) translateZ(0); }
+}
+.wake {
+    animation: ghost-wake 0.6s ease-out;
+}
+/* Wake indicator bubble (the "!") */
+#wake-bubble {
+    position: absolute;
+    top: 22%;
+    left: 72%;
+    transform: translateX(-50%) scale(0);
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 3px rgba(0,0,0,0.6), 0 0 6px rgba(255, 215, 0, 0.9);
+    pointer-events: none;
+    transition: none;
+    opacity: 0;
+    z-index: 10;
+}
+#wake-bubble.pop {
+    animation: bubble-pop 0.8s ease-out;
+}
+@keyframes bubble-pop {
+    0%   { transform: translateX(-50%) scale(0) translateY(4px); opacity: 0; }
+    30%  { transform: translateX(-50%) scale(1.4) translateY(0); opacity: 1; }
+    60%  { transform: translateX(-50%) scale(1) translateY(-4px); opacity: 1; }
+    100% { transform: translateX(-50%) scale(0.9) translateY(-10px); opacity: 0; }
+}
+/* Toast — short label drawn inside the ghost window (replaces the old
+   Qt QLabel tool window, which left compositor residue on macOS). */
+#ghost-toast {
+    position: absolute;
+    left: 50%;
+    top: 2px;
+    transform: translateX(-50%) scale(0);
+    padding: 2px 8px;
+    border-radius: 9px;
+    font-family: -apple-system, system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: #2dd4a8;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 20;
+}
+#ghost-toast.show {
+    animation: toast-pop 2s ease-out forwards;
+}
+@keyframes toast-pop {
+    0%   { transform: translateX(-50%) scale(0.4) translateY(6px); opacity: 0; }
+    8%   { transform: translateX(-50%) scale(1.1) translateY(-1px); opacity: 1; }
+    15%  { transform: translateX(-50%) scale(1)   translateY(-2px); opacity: 1; }
+    85%  { transform: translateX(-50%) scale(1)   translateY(-2px); opacity: 1; }
+    100% { transform: translateX(-50%) scale(0.9) translateY(-8px); opacity: 0; }
+}
+</style>
+</head>
+<body>
+<div id="ghost-container"></div>
+<div id="wake-bubble">!</div>
+<div id="ghost-toast"></div>
+<script>
+var ghostEl = null;
+var ghostPendingEl = null;
+var ghostCurrentSvg = '';
+var ghostState = 'idle';
+var ghostIdleTimer = null;
+
+// Configurable — updated by ghostSetConfig()
+var ghostSvgMap = {
+    idle: 'ghost-idle-follow.svg',
+    working: 'ghost-working-thinking.svg',
+    sleeping: 'ghost-sleeping.svg',
+    error: 'ghost-gui-help.svg'
+};
+var ghostAutoSleepSeconds = 60;
+var ghostErrorResetSeconds = 5;
+
+function ghostLoadSvg(svgFile) {
+    if (ghostCurrentSvg === svgFile && ghostEl) return;
+    var container = document.getElementById('ghost-container');
+
+    // Hard clear the container before mounting the new sprite. The
+    // previous "append new, remove old on load" pattern briefly left
+    // two <object> elements in the DOM, which on macOS Chromium +
+    // QtWebEngine could produce a stale composited layer of the old
+    // sprite behind the new one (the 'standing ghost showing through
+    // sleeping' artifact). Keeping the DOM strictly to a single sprite
+    // at all times makes the layer cache impossible to corrupt.
+    var existing = container.querySelectorAll('object');
+    for (var i = 0; i < existing.length; i++) {
+        existing[i].remove();
+    }
+    ghostEl = null;
+    ghostPendingEl = null;
+
+    var next = document.createElement('object');
+    next.type = 'image/svg+xml';
+    next.style.opacity = '0';
+    next.style.transition = 'opacity 0.15s ease';
+    next.data = svgFile;
+
+    var reveal = function() {
+        if (ghostPendingEl !== next) return;
+        next.style.opacity = '1';
+        ghostPendingEl = null;
+        ghostEl = next;
+        ghostCurrentSvg = svgFile;
+    };
+
+    next.addEventListener('load', reveal, { once: true });
+    container.appendChild(next);
+    ghostPendingEl = next;
+
+    // Fallback: show after 400ms even if the load event never fires
+    // (rare; happens with some cached SVG paths in Chromium). 400ms
+    // is long enough for a real load, short enough that a broken
+    // load does not leave the window empty for noticeable time.
+    setTimeout(function() {
+        if (ghostPendingEl === next) reveal();
+    }, 400);
+}
+
+// Called from Python on resize to force reload of current SVG
+function ghostReload() {
+    var current = ghostCurrentSvg;
+    ghostCurrentSvg = '';
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+    if (current) ghostLoadSvg(current);
+}
+
+function ghostUpdateState(newState) {
+    if (ghostState === newState) return;
+    ghostState = newState;
+    if (ghostIdleTimer) { clearTimeout(ghostIdleTimer); ghostIdleTimer = null; }
+    ghostLoadSvg(ghostSvgMap[newState] || ghostSvgMap.idle || 'ghost-idle-follow.svg');
+    if (newState === 'idle' && ghostAutoSleepSeconds > 0) {
+        ghostIdleTimer = setTimeout(function() {
+            if (ghostState === 'idle') ghostUpdateState('sleeping');
+        }, ghostAutoSleepSeconds * 1000);
+    }
+    if (newState === 'error' && ghostErrorResetSeconds > 0) {
+        setTimeout(function() {
+            if (ghostState === 'error') ghostUpdateState('idle');
+        }, ghostErrorResetSeconds * 1000);
+    }
+}
+
+// Called from Python when user pokes a sleeping ghost
+function ghostPoke(symbol) {
+    var container = document.getElementById('ghost-container');
+    container.classList.remove('shake');
+    void container.offsetWidth; // reflow to restart animation
+    container.classList.add('shake');
+
+    var bubble = document.getElementById('wake-bubble');
+    if (symbol) bubble.textContent = symbol;
+    bubble.classList.remove('pop');
+    void bubble.offsetWidth;
+    bubble.classList.add('pop');
+}
+
+// Called from Python to show a short status toast (e.g. "Done!", "Error!").
+// Drawn inside the ghost window — no separate OS-level window, so macOS
+// compositors have no translucent tool-window frame to leave residue for.
+function ghostToast(text, color) {
+    var toast = document.getElementById('ghost-toast');
+    if (!toast) return;
+    toast.textContent = text || '';
+    toast.style.background = color || '#2dd4a8';
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+}
+
+// Called from Python on actual wake transition
+function ghostWakeEffect() {
+    var container = document.getElementById('ghost-container');
+    container.classList.remove('wake');
+    void container.offsetWidth;
+    container.classList.add('wake');
+
+    var bubble = document.getElementById('wake-bubble');
+    bubble.textContent = '✨';
+    bubble.classList.remove('pop');
+    void bubble.offsetWidth;
+    bubble.classList.add('pop');
+}
+
+// Called from Python to update configuration
+function ghostSetConfig(cfg) {
+    if (cfg.state_svg_map) {
+        ghostSvgMap = cfg.state_svg_map;
+    }
+    if (typeof cfg.auto_sleep_seconds === 'number') {
+        ghostAutoSleepSeconds = cfg.auto_sleep_seconds;
+    }
+    if (typeof cfg.error_reset_seconds === 'number') {
+        ghostErrorResetSeconds = cfg.error_reset_seconds;
+    }
+    // Re-apply current state with new SVG map
+    var currentState = ghostState;
+    ghostState = '';
+    ghostUpdateState(currentState);
+}
+
+// Initial load — use state machine so auto-sleep timer starts
+ghostState = '';
+ghostUpdateState('idle');
+</script>
+</body>
+</html>

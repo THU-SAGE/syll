@@ -1,0 +1,1226 @@
+/* Syll — project site. Shared by index.html and research.html.
+ *
+ * Palette:   warm charcoal background, soft-paper text, faint amber accent.
+ * Fonts:     Cormorant Garamond (serif display + body), IBM Plex Sans (sans
+ *            for small meta / captions), JetBrains Mono (code only).
+ * Spirit:    generous whitespace, no gradients, no shadows, no drop caps,
+ *            a faint noise overlay that echoes the hero illustration.
+ */
+
+/* ── Design tokens ─────────────────────────────────────────────────── */
+:root {
+    --bg:             #1a1a1d;
+    --bg-soft:        #222226;
+    --paper:          #f0ede8;
+    --paper-dim:      #c6c2bc;
+    --paper-faint:    #78757a;
+    --amber:          #c58a3a;
+    --amber-dim:      #8a6329;
+    --rule:           #33302e;
+
+    --serif:          'Cormorant Garamond', 'EB Garamond', 'Noto Serif SC', 'Songti SC', STSong, Georgia, serif;
+    --sans:           'IBM Plex Sans', 'Noto Sans SC', 'PingFang SC', -apple-system, system-ui, sans-serif;
+    --mono:           'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+    --prose-width:    640px;
+    --hero-width:     1100px;
+    --section-pad-y:  clamp(72px, 10vw, 140px);
+}
+
+/* ── Reset / base ──────────────────────────────────────────────────── */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--paper);
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.15rem;
+    line-height: 1.75;
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Subtle paper-noise overlay. Uses an inline SVG so no asset file needed. */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+main, header, footer, nav, section, article {
+    position: relative;
+    z-index: 2;
+}
+
+/* ── Typography ────────────────────────────────────────────────────── */
+h1, h2, h3, h4 {
+    font-family: var(--serif);
+    font-weight: 500;
+    line-height: 1.2;
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+}
+
+h1 { font-size: clamp(3rem, 7vw, 5rem); }
+h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); font-style: italic; color: var(--paper-dim); font-weight: 400; }
+h3 { font-size: 1.35rem; }
+
+p {
+    margin: 0 0 1.1em;
+}
+
+em, i { font-style: italic; }
+
+a {
+    color: var(--amber);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 180ms ease, color 180ms ease;
+}
+
+a:hover {
+    border-bottom-color: var(--amber);
+}
+
+code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    background: var(--bg-soft);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    color: var(--paper);
+}
+
+pre {
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.2rem 1.5rem;
+    overflow-x: auto;
+    line-height: 1.6;
+    color: var(--paper);
+    margin: 1.5rem 0;
+}
+
+pre code {
+    background: transparent;
+    padding: 0;
+    font-size: inherit;
+}
+
+blockquote {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-style: italic;
+    color: var(--paper-dim);
+}
+
+/* ── Top bar ───────────────────────────────────────────────────────── */
+.topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.topbar a, .topbar span {
+    pointer-events: auto;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    color: var(--paper-dim);
+    border: none;
+}
+
+.topbar a:hover {
+    color: var(--amber);
+    border: none;
+}
+
+.topbar .wordmark {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-style: italic;
+    color: var(--paper);
+}
+
+.topbar .links > * {
+    margin-left: 1.5rem;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────── */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 6rem 2.5rem 4rem;
+    max-width: var(--hero-width);
+    margin: 0 auto;
+}
+
+.hero-grid {
+    display: grid;
+    grid-template-columns: 560px 1fr;
+    gap: 5rem;
+    align-items: center;
+    width: 100%;
+}
+
+.hero-frame {
+    position: relative;
+    padding: 4px;
+    border: 1px solid var(--amber-dim);
+    border-radius: 2px;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    filter: drop-shadow(0 0 40px rgba(197, 138, 58, 0.04));
+}
+
+.hero-image {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    display: block;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 2px;
+    filter: contrast(1.02) brightness(0.97);
+    animation: heroBreath 8s ease-in-out infinite alternate;
+}
+
+@keyframes heroBreath {
+    from { filter: contrast(1.02) brightness(0.95); }
+    to   { filter: contrast(1.02) brightness(1.02); }
+}
+
+.hero-text .headline {
+    font-size: clamp(2.5rem, 5.5vw, 4rem);
+    font-weight: 500;
+    line-height: 1.15;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.015em;
+}
+
+.hero-text .headline .line-2 {
+    display: block;
+    color: var(--paper-dim);
+}
+
+.hero-text .subtitle {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    color: var(--paper-faint);
+    letter-spacing: 0.01em;
+    margin-bottom: 2.5rem;
+    max-width: 480px;
+}
+
+.hero-text .ctas {
+    display: flex;
+    gap: 2rem;
+    font-family: var(--sans);
+    font-size: 0.95rem;
+}
+
+.hero-text .ctas a {
+    color: var(--paper);
+    border-bottom: 1px solid var(--amber-dim);
+    padding-bottom: 2px;
+}
+
+.hero-text .ctas a:hover {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+}
+
+/* Tiny etymology whisper tucked below the CTAs — delivers the name
+ * origin on first screen without breaking the hero's spare composition. */
+.hero-text .hero-note {
+    margin-top: 2.75rem;
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+    letter-spacing: 0.015em;
+    line-height: 1.65;
+    max-width: 480px;
+}
+
+.hero-text .hero-note em {
+    font-style: italic;
+    color: var(--paper-dim);
+}
+
+/* ── Sections ──────────────────────────────────────────────────────── */
+section {
+    padding: var(--section-pad-y) 2.5rem;
+    max-width: var(--prose-width);
+    margin: 0 auto;
+}
+
+section.wide {
+    max-width: 820px;
+}
+
+.kicker {
+    font-family: var(--sans);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.7rem;
+    color: var(--paper-faint);
+    opacity: 0.85;
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+/* Poem section — each stanza its own block with generous spacing */
+.poem {
+    text-align: left;
+    font-size: 1.35rem;
+    line-height: 1.85;
+    color: var(--paper);
+}
+
+.poem .stanza {
+    margin-bottom: 2.5rem;
+}
+
+.poem .stanza:last-child { margin-bottom: 0; }
+
+.poem .divider {
+    color: var(--rule);
+    text-align: center;
+    margin: 1.5rem 0;
+    letter-spacing: 0.5em;
+}
+
+/* Vignettes — no icons, prose-style, heading + body */
+.vignette {
+    margin-bottom: 2.5rem;
+}
+
+.vignette-headline {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--paper);
+    margin-bottom: 0.4rem;
+    line-height: 1.3;
+}
+
+.vignette-body {
+    font-family: var(--sans);
+    font-size: 1rem;
+    color: var(--paper-dim);
+    line-height: 1.7;
+}
+
+/* Fragments — italicized serif quotes */
+.fragment {
+    font-style: italic;
+    font-size: 1.2rem;
+    color: var(--paper-dim);
+    line-height: 1.75;
+    margin-bottom: 2.5rem;
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--rule);
+}
+
+.fragment:last-child { margin-bottom: 0; }
+
+/* Developer fast-lane — tighter, functional */
+.dev-lane {
+    font-family: var(--sans);
+    font-size: 0.98rem;
+    color: var(--paper-dim);
+}
+
+.dev-lane p {
+    margin-bottom: 1.25rem;
+}
+
+.dev-lane .lane-links {
+    display: flex;
+    gap: 2rem;
+    font-size: 0.9rem;
+    margin-top: 1.5rem;
+}
+
+/* Name note — a small etymology aside right after the poem */
+.name-note {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    line-height: 1.85;
+    color: var(--paper-dim);
+    max-width: 600px;
+    margin: 0;
+}
+
+.name-note em {
+    color: var(--paper);
+    font-style: italic;
+}
+
+/* Author note — personal, slightly smaller */
+.author-note {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    font-style: italic;
+    color: var(--paper-dim);
+    line-height: 1.8;
+}
+
+.author-note .signature {
+    display: block;
+    margin-top: 1.5rem;
+    font-style: normal;
+    color: var(--paper-faint);
+    font-size: 0.9rem;
+    font-family: var(--sans);
+}
+
+/* ── Section divider rule ─────────────────────────────────────────── */
+.rule {
+    max-width: var(--prose-width);
+    margin: 0 auto;
+    border: none;
+    border-top: 1px solid var(--rule);
+    opacity: 0.35;
+}
+
+.rule-soft {
+    max-width: 240px;
+    margin: 0 0 1.5rem 0;
+    border: none;
+    border-top: 1px solid var(--rule);
+    opacity: 0.35;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────── */
+footer {
+    padding: 4rem 2.5rem 3rem;
+    text-align: center;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    color: var(--paper-faint);
+}
+
+footer .footer-quote {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--paper-dim);
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+footer .footer-links > * {
+    margin: 0 0.75rem;
+}
+
+footer .footer-note {
+    margin-top: 1rem;
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+    opacity: 0.9;
+}
+
+footer .footer-note code {
+    font-family: var(--mono);
+    font-size: 0.95em;
+    color: var(--paper);
+}
+
+footer a {
+    color: var(--paper-faint);
+    border: none;
+}
+
+footer a:hover { color: var(--amber); }
+
+/* ── Research page specific ────────────────────────────────────────── */
+.research-body {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 8rem 2.5rem 4rem;
+    font-family: var(--sans);
+    font-size: 1rem;
+    color: var(--paper-dim);
+    line-height: 1.8;
+}
+
+.research-body h1 {
+    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+    color: var(--paper);
+    margin-bottom: 0.25rem;
+}
+
+.research-body h2 {
+    font-size: 1.5rem;
+    font-style: normal;
+    color: var(--paper);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    letter-spacing: -0.005em;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 0.5rem;
+}
+
+.research-body h3 {
+    font-family: var(--sans);
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.research-body .meta {
+    font-size: 0.88rem;
+    color: var(--paper-faint);
+    margin-bottom: 2rem;
+}
+
+.research-body figure {
+    margin: 2rem 0;
+    text-align: center;
+}
+
+.research-body figure img {
+    max-width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+}
+
+.research-body figcaption {
+    font-size: 0.8rem;
+    color: var(--paper-faint);
+    font-family: var(--mono);
+    margin-top: 0.5rem;
+    letter-spacing: 0.02em;
+}
+
+.research-body .placeholder {
+    padding: 3rem 1.5rem;
+    background: var(--bg-soft);
+    border: 1px dashed var(--rule);
+    border-radius: 3px;
+    text-align: center;
+    color: var(--paper-faint);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    margin: 2rem 0;
+}
+
+.research-body .research-demo {
+    margin: 2rem 0 2.75rem;
+}
+
+.research-body .research-demo video {
+    display: block;
+    width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: #111;
+}
+
+.research-body .research-demo-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    margin: 0.75rem 0 0;
+    font-family: var(--sans);
+    font-size: 0.9rem;
+}
+
+.research-body .bibtex {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.2rem 1.5rem;
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--paper);
+    line-height: 1.6;
+}
+
+/* ── Fade-in on scroll (one-time) ─────────────────────────────────── */
+.fade-in {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 900ms ease-out, transform 900ms ease-out;
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 820px) {
+    .topbar {
+        padding: 1rem 1.25rem;
+    }
+    .topbar .links > * { margin-left: 1rem; }
+
+    .hero {
+        padding: 5rem 1.25rem 3rem;
+    }
+    .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 2.5rem;
+        text-align: left;
+    }
+    .hero-frame {
+        max-width: 280px;
+        margin: 0 auto;
+    }
+    .hero-image {
+        max-width: none;
+    }
+    .hero-text {
+        text-align: left;
+    }
+
+    section {
+        padding: 72px 1.25rem;
+    }
+
+    .poem {
+        font-size: 1.2rem;
+    }
+
+    .research-body {
+        padding: 6rem 1.25rem 3rem;
+    }
+
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .fade-in { opacity: 1; transform: none; transition: none; }
+}
+
+/* ── Chinese-specific typography tweaks ───────────────────────────── */
+/* Chinese glyphs are denser and need more vertical breathing.
+ * Latin letters keep their tighter tracking; Chinese loses the negative
+ * letter-spacing (which doesn't help CJK) and picks up a slightly more
+ * generous line-height. */
+html[lang^="zh"] body {
+    font-feature-settings: "palt";
+}
+html[lang^="zh"] h1,
+html[lang^="zh"] h2,
+html[lang^="zh"] h3,
+html[lang^="zh"] .hero-text .headline {
+    letter-spacing: 0;
+    line-height: 1.35;
+}
+html[lang^="zh"] .poem {
+    line-height: 1.95;
+    font-size: 1.3rem;
+}
+html[lang^="zh"] .zh-page .hero-text .headline .line-2 {
+    display: block;
+    font-size: 0.62em;
+    line-height: 1.28;
+    color: var(--paper-dim);
+}
+html[lang^="zh"] .zh-page .hero-text .subtitle {
+    line-height: 1.95;
+    max-width: 34rem;
+}
+html[lang^="zh"] .zh-page .poem .stanza {
+    max-width: 34rem;
+}
+html[lang^="zh"] .zh-page .poem .divider {
+    letter-spacing: 0.8em;
+}
+html[lang^="zh"] .fragment,
+html[lang^="zh"] .name-note,
+html[lang^="zh"] .author-note {
+    line-height: 1.95;
+}
+html[lang^="zh"] .zh-page .fragment {
+    padding-left: 1.5rem;
+    border-left-color: rgba(197, 138, 58, 0.28);
+}
+html[lang^="zh"] .vignette-headline {
+    font-style: normal;         /* CJK italic is ugly — drop it */
+    font-weight: 500;
+}
+html[lang^="zh"] .vignette-body {
+    line-height: 1.9;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Letterpress upgrade — staged reveal, paper cards, typographic device,
+ * ghost cursor, quiet footer ceremony. Every new module has a reduced-
+ * motion fallback at the end of this block.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+/* Hero headline & subtitle — staged reveal per line.
+ * Each .stage-line starts blurred & hidden; JS adds .visible with a delay
+ * pulled from data-delay. Blur→focus feels like typeset ink settling. */
+.stage-line {
+    display: inline-block;
+    opacity: 0;
+    filter: blur(6px);
+    transition: opacity 700ms ease-out, filter 700ms ease-out;
+}
+.stage-line.visible {
+    opacity: 1;
+    filter: blur(0);
+}
+.hero-text .headline .stage-line {
+    display: inline;
+}
+.hero-text .headline .line-2 {
+    display: block;
+}
+.hero-text .subtitle.stage-line,
+.hero-text .ctas.stage-line {
+    display: block;
+}
+
+/* Poem guide + per-line reveal. The amber guideline binds the four
+ * stanzas into one drifting manuscript instead of four boxes. */
+#poem .poem {
+    border-left: 1px solid rgba(197, 138, 58, 0.15);
+    padding-left: 2rem;
+    margin-left: 0;
+    font-size: 1.4rem;
+}
+#poem .poem .stanza .line {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 600ms ease-out, transform 600ms ease-out;
+}
+#poem .poem .stanza .line.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+#poem .poem .divider .dot {
+    display: inline-block;
+    opacity: 0;
+    transition: opacity 500ms ease-out;
+}
+#poem .poem .divider .dot.visible { opacity: 1; }
+
+/* "On her name" — three-slot typographic device.
+ * First slot holds "Syll" (kept); the other two are dashed boxes that
+ * breathe very slowly. The device sits above the existing .name-note. */
+.syll-slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin: 0 0 2.75rem;
+    max-width: 440px;
+}
+.syll-slot {
+    min-height: 4.75rem;
+    border: 1px dashed rgba(51, 48, 46, 0.7);
+    border-radius: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.5rem;
+    gap: 0.45rem;
+    position: relative;
+    transition: border-color 400ms ease;
+}
+.syll-slot.kept {
+    border-color: var(--amber-dim);
+    border-style: solid;
+}
+.syll-slot .slot-glyph {
+    font-family: var(--serif);
+    font-size: 1.55rem;
+    font-style: italic;
+    color: var(--paper);
+    line-height: 1;
+}
+.syll-slot .slot-label {
+    font-family: var(--sans);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--paper-faint);
+    opacity: 0.7;
+}
+.syll-slot.lost .slot-glyph {
+    color: var(--paper-faint);
+    opacity: 0.3;
+    animation: slotGlow 4s ease-in-out infinite;
+    transition: opacity 600ms ease-out;
+}
+.syll-slot.lost:hover { border-color: rgba(138, 99, 41, 0.5); }
+.syll-slot.lost:hover .slot-glyph { opacity: 0.45; }
+
+@keyframes slotGlow {
+    0%, 100% { opacity: 0.28; }
+    50%      { opacity: 0.48; }
+}
+
+/* Fragments as slightly tilted paper cards with stagger reveal.
+ * Each card's tilt is passed via inline --tilt custom property. */
+.fragment-card {
+    position: relative;
+    padding: 1.75rem 2rem;
+    margin-bottom: 2rem;
+    background: linear-gradient(180deg, rgba(240, 237, 232, 0.014) 0%, transparent 100%);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    opacity: 0;
+    transform: translateY(24px) rotate(var(--tilt, 0deg));
+    transition: opacity 900ms ease-out, transform 900ms ease-out, box-shadow 600ms ease-out;
+}
+.fragment-card.visible {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--tilt, 0deg));
+}
+.fragment-card:hover,
+.fragment-card.visible:hover {
+    transform: translateY(-2px) rotate(0deg);
+    box-shadow: inset 0 0 60px rgba(197, 138, 58, 0.035);
+}
+.fragment-card .fragment {
+    margin: 0;
+    padding-left: 1.25rem;
+    border-left: 1px solid var(--rule);
+}
+
+.fragment-footnote {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    color: var(--paper-faint);
+    margin: 2.5rem 0 0;
+    line-height: 1.7;
+}
+.fragment-footnote a {
+    color: var(--paper-dim);
+    border-bottom: 1px solid var(--rule);
+}
+.fragment-footnote a:hover {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+}
+
+/* Vignettes — asymmetric rhythm + a tiny amber mark per entry.
+ * The mark lives in ::before and comes in after the headline, so your
+ * eye reads the sentence first and then notices the little punctuation. */
+.vignette {
+    position: relative;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 700ms ease-out, transform 700ms ease-out;
+}
+.vignette.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+#tends .vignette:nth-of-type(even) {
+    margin-left: 2.5rem;
+}
+.vignette::before {
+    content: attr(data-mark);
+    position: absolute;
+    left: -1.5rem;
+    top: 0.1rem;
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    color: var(--amber);
+    opacity: 0;
+    transition: opacity 500ms ease-out 200ms;
+}
+.vignette.visible::before {
+    opacity: 0.85;
+}
+
+/* Dev fast-lane → small "receipt": narrower block, two faux paper
+ * perforation marks top & bottom, command lines prefixed with a dim $. */
+.dev-receipt {
+    max-width: 480px;
+    margin: 0 0 1.5rem;
+    padding: 1.25rem 0;
+    position: relative;
+}
+.dev-receipt::before,
+.dev-receipt::after {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--amber-dim);
+    margin: 0 auto;
+    opacity: 0.55;
+}
+.dev-receipt pre {
+    margin: 1rem 0;
+    background: transparent;
+    border: none;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+}
+.dev-receipt .receipt-line {
+    display: block;
+}
+.dev-receipt .receipt-line::before {
+    content: '$ ';
+    color: var(--amber-dim);
+}
+.dev-lane .lane-links {
+    align-items: baseline;
+    gap: 0;
+}
+.dev-lane .lane-links a {
+    margin-right: 1.5rem;
+}
+.dev-lane .lane-links a + a::before {
+    content: '·';
+    color: var(--rule);
+    margin-right: 1.5rem;
+    margin-left: -0.25rem;
+}
+
+/* Ghost cursor trail — a 6px amber dot that trails the real cursor at
+ * ~120ms lag, fades out after 800ms of stillness. Desktop hover only. */
+.ghost-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--amber);
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0;
+    mix-blend-mode: screen;
+    transform: translate3d(-50%, -50%, 0);
+    transition: opacity 400ms ease-out;
+    will-change: transform, opacity;
+}
+.ghost-cursor.active { opacity: 0.18; }
+@media not (hover: hover), not (pointer: fine) {
+    .ghost-cursor { display: none !important; }
+}
+
+/* Footer closing ceremony (LANDING PAGES ONLY — scoped to body.landing so
+ * research.html's footer stays as it was). Quote expands letter-spacing
+ * while fading in; a single amber dot appears below; links pick up the
+ * dev-lane rhythm. */
+body.landing footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+body.landing footer .footer-quote {
+    letter-spacing: 0;
+    opacity: 0;
+    transition: letter-spacing 1200ms ease-out, opacity 1200ms ease-out;
+    will-change: letter-spacing, opacity;
+    margin-bottom: 0;
+}
+body.landing footer .footer-quote.drift {
+    letter-spacing: 0.04em;
+    opacity: 1;
+}
+body.landing footer .footer-divider {
+    display: inline-block;
+    color: var(--amber-dim);
+    font-family: var(--serif);
+    font-size: 1rem;
+    opacity: 0;
+    margin: 1.25rem auto 1.5rem;
+    transition: opacity 2000ms ease-out 800ms;
+}
+body.landing footer .footer-quote.drift + .footer-divider { opacity: 0.55; }
+body.landing footer .footer-links a + a { margin-left: 0; }
+body.landing footer .footer-links a + a::before {
+    content: '·';
+    color: var(--rule);
+    margin: 0 0.75rem 0 0;
+}
+
+/* ── Responsive additions for the new modules ─────────────────────── */
+@media (max-width: 820px) {
+    .hero-grid {
+        gap: 2.5rem;
+    }
+    .syll-slots {
+        gap: 0.75rem;
+        max-width: 100%;
+    }
+    .syll-slot {
+        min-height: 4rem;
+        padding: 0.5rem 0.35rem;
+    }
+    .syll-slot .slot-glyph { font-size: 1.3rem; }
+    .fragment-card {
+        padding: 1.25rem 1.25rem;
+    }
+    .vignette::before {
+        left: -1.1rem;
+        font-size: 1rem;
+    }
+    #tends .vignette:nth-of-type(even) {
+        margin-left: 0;
+    }
+    .dev-receipt {
+        max-width: 100%;
+    }
+    footer .footer-links {
+        text-align: center;
+        line-height: 1.9;
+    }
+    footer .footer-note {
+        max-width: 26rem;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.7;
+    }
+}
+
+/* ── CJK overrides for new modules ────────────────────────────────── */
+html[lang^="zh"] .syll-slot .slot-glyph {
+    font-style: normal;
+}
+html[lang^="zh"] #poem .poem {
+    font-size: 1.3rem;
+}
+html[lang^="zh"] .fragment-card .fragment {
+    padding-left: 1.5rem;
+    border-left-color: rgba(197, 138, 58, 0.28);
+}
+html[lang^="zh"] .vignette::before {
+    font-size: 1rem;
+}
+
+/* ── Reduced-motion additions ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .hero-image { animation: none !important; }
+    .stage-line,
+    #poem .poem .stanza .line,
+    #poem .poem .divider .dot,
+    .fragment-card,
+    .vignette,
+    footer .footer-quote,
+    footer .footer-divider {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+        letter-spacing: 0 !important;
+        transition: none !important;
+        animation: none !important;
+    }
+    .fragment-card { transform: none !important; }
+    .vignette::before { opacity: 0.85 !important; transition: none !important; }
+    .syll-slot.lost .slot-glyph { animation: none !important; opacity: 0.4 !important; }
+    .ghost-cursor { display: none !important; }
+}
+
+/* Language toggle button in top bar (small pill) */
+.topbar .lang-toggle {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    padding: 0.15rem 0.55rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--paper-dim);
+    margin-left: 1.75rem;
+    letter-spacing: 0.05em;
+}
+
+.topbar .lang-toggle:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Cinema mode — opt-in via ?cinema or #cinema URL parameter.
+ *
+ * Activating body.cinema: swaps hero to a full-bleed poster (hero-bg.png),
+ * hides the small framed thumbnail, lays paper-bg.png as a whole-body
+ * tile, hides the cursor and top bar, and tightens section padding so a
+ * scripted scroll passes through all acts in ~20s. A final fixed outro
+ * slate fades in at the end.
+ *
+ * Normal (non-cinema) visitors see zero change. All selectors below are
+ * scoped with body.cinema so there is no risk of bleed-through.
+ * ══════════════════════════════════════════════════════════════════════ */
+
+body.cinema {
+    cursor: none !important;
+    background: var(--bg) url('../paper-bg.png') center / cover fixed no-repeat;
+}
+body.cinema a, body.cinema button { cursor: none !important; }
+body.cinema .topbar { display: none; }
+
+/* Hero swaps to full-bleed poster. Right-aligned so the ghost silhouette
+ * in the poster sits at the right edge; headline text floats on the quiet
+ * left third. A dark-to-transparent scrim mutes the poster's baked-in
+ * handwritten typography (handwritten Syll scatter, song-staff caption,
+ * "still here." etc.) wherever the overlay headline sits, so the two
+ * typographic layers don't compete. Desktop-first for a 1920×1080 frame. */
+body.cinema .hero {
+    min-height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 0 5vw;
+    background:
+        linear-gradient(to right,
+            rgba(26, 26, 29, 0.82) 0%,
+            rgba(26, 26, 29, 0.62) 22%,
+            rgba(26, 26, 29, 0.30) 44%,
+            rgba(26, 26, 29, 0) 60%),
+        #1a1a1d url('../hero-bg.png') right center / cover no-repeat;
+    display: flex;
+    align-items: center;
+}
+body.cinema .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    max-width: 1400px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+body.cinema .hero-frame { display: none; }
+body.cinema .hero-text {
+    max-width: 46vw;
+    padding-left: 4vw;
+}
+body.cinema .hero-text .headline {
+    font-size: clamp(2.75rem, 6vw, 4.5rem);
+}
+body.cinema .hero-text .subtitle {
+    max-width: 38vw;
+}
+/* A whisper of shadow behind overlay text — on top of the scrim this is
+ * usually unnecessary, but it catches any baked typography the gradient
+ * doesn't fully reach (e.g. letter edges bleeding past ~44%). */
+body.cinema .hero-text .headline,
+body.cinema .hero-text .subtitle,
+body.cinema .hero-text .ctas {
+    text-shadow: 0 1px 22px rgba(15, 14, 14, 0.55);
+}
+
+/* Tighten section padding so the scripted scroll lands each beat inside
+ * one viewport — keeps the 20s cut breathing but not dragging. */
+body.cinema section {
+    padding: clamp(56px, 8vh, 96px) 2.5rem;
+}
+body.cinema .rule { display: none; }
+
+/* Fragments section: the scripted hover-settle pass uses an extra class
+ * .cinema-settled that the cinema scheduler adds/removes on the middle
+ * card, so the effect is reliable under recording. */
+body.cinema .fragment-card.cinema-settled {
+    transform: translateY(-2px) rotate(0deg) !important;
+    box-shadow: inset 0 0 60px rgba(197, 138, 58, 0.045) !important;
+}
+
+/* Outro slate — fixed full-viewport overlay revealed at the end of the
+ * cinema timeline. Layers: big italic Syll, amber dot, url line. */
+.outro-slate {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 1000ms ease-out;
+}
+body.cinema .outro-slate { display: flex; }
+body.cinema .outro-slate.active { opacity: 1; }
+.outro-slate .outro-syll {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(6rem, 14vmin, 11rem);
+    font-weight: 500;
+    color: var(--paper);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    transform: scale(0.97);
+    transition: transform 1600ms ease-out;
+}
+body.cinema .outro-slate.active .outro-syll { transform: scale(1); }
+.outro-slate .outro-dot {
+    color: var(--amber-dim);
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    opacity: 0;
+    transition: opacity 800ms ease-out 400ms;
+}
+body.cinema .outro-slate.active .outro-dot { opacity: 0.7; }
+.outro-slate .outro-url {
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    color: var(--paper-faint);
+    letter-spacing: 0.14em;
+    text-transform: lowercase;
+    opacity: 0;
+    transition: opacity 800ms ease-out 800ms;
+}
+body.cinema .outro-slate.active .outro-url { opacity: 1; }
+
+/* Cinema-mode reduced-motion fallback: skip programmatic scroll/animation
+ * but still show the full-bleed poster + outro statically. */
+@media (prefers-reduced-motion: reduce) {
+    body.cinema .outro-slate { opacity: 1; }
+    body.cinema .outro-slate .outro-syll,
+    body.cinema .outro-slate .outro-dot,
+    body.cinema .outro-slate .outro-url {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+}
+
+body.cinema footer .footer-note {
+    display: none;
+}

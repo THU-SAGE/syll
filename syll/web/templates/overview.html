@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value" id="today-count">-</div>
+        <div class="stat-label">Today's Events</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="total-count">-</div>
+        <div class="stat-label">Total Events</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="active-agents">-</div>
+        <div class="stat-label">Active Agents</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="last-update">-</div>
+        <div class="stat-label">Last Update</div>
+    </div>
+</div>
+
+<!-- Calendar Heatmap -->
+<div class="section">
+    <h2>Activity Calendar</h2>
+    <div id="cal-heatmap"></div>
+</div>
+
+<!-- Two Column Layout -->
+<div class="two-column">
+    <!-- Recent Events Timeline -->
+    <div class="section">
+        <h2>Recent Events</h2>
+        <div id="timeline" class="timeline"></div>
+    </div>
+
+    <!-- Agent Distribution -->
+    <div class="section">
+        <h2>Agent Distribution</h2>
+        <canvas id="agent-chart"></canvas>
+    </div>
+</div>
+
+<!-- Day Detail (HTMX target) -->
+<div id="day-detail" class="section" style="display: none;">
+    <h2>Day Detail</h2>
+    <div id="day-content"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+        initDashboard();
+    });
+</script>
+{% endblock %}

@@ -37,6 +37,15 @@
 
 ---
 
+## Feature news
+
+- **MCP servers are now first-class tools.** Configure stdio, SSE, and streamable-HTTP MCP servers from the Pet UI; Syll loads them into the agent as namespaced `mcp__server__tool` tools before the first message.
+- **Safer MCP activation flow.** Local stdio servers require a command preview + hash confirmation before anything launches, while env/header secrets stay masked in MCP responses and out of `/api/v1/config`.
+- **Creative MCP templates included.** The public build ships Playwright, Stagehand, Blender, and Godot template suggestions; Blender uses `uvx blender-mcp`, and Godot pins GoPeak MCP for reproducible local game-scene automation.
+- **Static asset refresh polish.** The web app now cache-busts bundled JS/CSS assets so UI changes reach the browser without stale `app.js` surprises after the next restart.
+
+---
+
 
 ## Quick start
 

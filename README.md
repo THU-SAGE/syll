@@ -581,6 +581,12 @@ For detailed changes, see [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
+## Contributing
+
+Syll is easiest to review when changes follow its extension points: Skills, Tools, Channels, Web routes, and Core runtime contracts. Start with [CONTRIBUTING.md](CONTRIBUTING.md); core contract changes should also use [Architecture Decision Records](docs/decisions/).
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

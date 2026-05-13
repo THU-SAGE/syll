@@ -9,6 +9,25 @@ permissions:
   contents: read
 
 jobs:
+  classify:
+    if: github.repository == 'THU-SAGE/syll' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          import re
+
+          version = os.environ["TAG"].removeprefix("v")
+          prerelease = bool(re.search(r"(?:a|b|rc)\d+$", version))
+          print(f"prerelease={str(prerelease).lower()}")
+          PY
+
   build:
     if: github.repository == 'THU-SAGE/syll' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -32,9 +51,28 @@ jobs:
           name: dist
           path: dist/*
 
-  publish:
-    needs: build
-    if: github.repository == 'THU-SAGE/syll' && startsWith(github.ref, 'refs/tags/v')
+  publish-testpypi:
+    needs: [classify, build]
+    if: needs.classify.outputs.prerelease == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/syll
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    needs: [classify, build]
+    if: needs.classify.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     environment:
       name: pypi

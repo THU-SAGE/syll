@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -19,3 +21,38 @@ jobs:
         run: ruff check syll/ tests/
       - name: Pytest
         run: pytest tests/ -v
+      - name: Changelog check
+        if: github.event_name == 'pull_request'
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          git fetch --no-tags origin "$base" || true
+          git fetch --no-tags origin "$head" || true
+
+          if git cat-file -e "$base^{commit}" && git cat-file -e "$head^{commit}"; then
+            changed="$(git diff --name-only "$base" "$head")"
+          else
+            changed="$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")"
+          fi
+
+          echo "Changed files:"
+          echo "$changed"
+
+          if ! echo "$changed" | grep -q '^syll/'; then
+            echo "No syll/** changes; skipping changelog requirement."
+            exit 0
+          fi
+
+          non_exempt="$(echo "$changed" | grep '^syll/' | grep -v '^syll/skills/' || true)"
+          if [ -z "$non_exempt" ]; then
+            echo "Only syll/skills/** changed; skipping changelog requirement."
+            exit 0
+          fi
+
+          if ! echo "$changed" | grep -q '^CHANGELOG.md$'; then
+            echo "::error::Runtime changes under syll/ require a CHANGELOG.md [Unreleased] entry."
+            echo "For internal-only refactors, add a short line under ### Changed."
+            exit 1
+          fi
+
+          echo "Changelog check passed."

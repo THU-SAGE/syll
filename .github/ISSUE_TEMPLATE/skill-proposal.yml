@@ -1,0 +1,50 @@
+name: Skill proposal
+description: Propose a markdown Skill for Syll.
+title: "skill: "
+labels: [skill]
+body:
+  - type: input
+    id: skill_name
+    attributes:
+      label: Skill name
+      description: Lowercase letters, digits, and hyphens only.
+      placeholder: "paper-summarizer"
+    validations:
+      required: true
+  - type: input
+    id: description
+    attributes:
+      label: One-line description
+      description: This becomes the `description` field in `SKILL.md`.
+      placeholder: "Summarize a research paper PDF and produce action items."
+    validations:
+      required: true
+  - type: input
+    id: metadata
+    attributes:
+      label: Metadata JSON
+      description: Optional single-line JSON for Syll metadata.
+      placeholder: '{"syll":{"requires":{"bins":["example-cli"]}}}'
+    validations:
+      required: false
+  - type: textarea
+    id: trigger
+    attributes:
+      label: Trigger
+      description: What user request should cause the agent to use this skill?
+    validations:
+      required: true
+  - type: textarea
+    id: dialogue
+    attributes:
+      label: Example dialogue
+      description: Show one user request and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: requires
+    attributes:
+      label: External requirements
+      description: CLI tools, accounts, API keys, files, OS constraints, or none.
+    validations:
+      required: false

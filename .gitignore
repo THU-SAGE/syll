@@ -44,3 +44,18 @@ poetry.lock
 # Local source media dropped at repo root; optimized public assets live under docs/media/
 /*.mp4
 /image.png
+
+# Local scratch / private material
+/scratch/
+/tmp/
+/notes/
+/screenshots/
+/recordings/
+/internal*/
+/private*/
+/wip*/
+/syll-scratch/
+*.zip
+*.mov
+*.mp4
+!docs/media/**/*.mp4

@@ -1,0 +1,55 @@
+name: Channel proposal
+description: Propose a new chat or notification channel.
+title: "channel: "
+labels: [channel]
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "Slack, Email, Matrix, Calendar"
+    validations:
+      required: true
+  - type: textarea
+    id: auth
+    attributes:
+      label: Authentication model
+      description: Bot token, OAuth, webhook secret, local credentials, or another model.
+    validations:
+      required: true
+  - type: dropdown
+    id: lifecycle
+    attributes:
+      label: Connection lifecycle
+      options:
+        - long-poll
+        - webhook
+        - socket
+        - local polling
+        - other
+    validations:
+      required: true
+  - type: input
+    id: sdk
+    attributes:
+      label: Official SDK or API docs
+      placeholder: "https://..."
+    validations:
+      required: false
+  - type: checkboxes
+    id: message_types
+    attributes:
+      label: Message types needed
+      options:
+        - label: Text
+        - label: Images
+        - label: Files
+        - label: Voice or audio
+        - label: Rich cards or buttons
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Include rate limits, access-control needs, or deployment constraints.
+    validations:
+      required: false

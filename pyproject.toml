@@ -2,6 +2,7 @@
 name = "syll"
 version = "0.2.0"
 description = "Syll — a small, self-hosted AI companion who sits at the edge of your screen and quietly tends the things you almost forgot."
+readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [

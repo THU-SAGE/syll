@@ -248,7 +248,7 @@ def test_chat_meta_lines_are_dim_and_aligned_under_body_column():
 
 
 def test_service_logs_render_as_quiet_system_rows():
-    """Service logs should not compete visually with chat turns."""
+    """Service logs show timestamp + level badge without overpowering chat."""
     app = DashboardApp(title="test", subtitle=None, sections=[])
     fake_log = _FakeLog()
     app._log = lambda: fake_log  # type: ignore[method-assign]
@@ -256,9 +256,21 @@ def test_service_logs_render_as_quiet_system_rows():
     app._write_log_line("23:33:33", "INFO", "service", "Cron service started with 0 jobs")
 
     line = fake_log.values[0]
-    assert str(line) == "system    info service · Cron service started with 0 jobs"
+    assert (
+        str(line)
+        == "system    23:33:33 INFO service · Cron service started with 0 jobs"
+    )
     assert isinstance(line, Text)
     assert line.spans[0].style == "dim #8a7d73"
+    assert any(
+        span.style and "bold" in span.style and "7ec8a9" in span.style for span in line.spans
+    ), "INFO badge should echo LOG_COLORS mint accent"
+
+    warn_line = app._system_line("WARNING", "svc", "heads up")
+    assert "WARNING" in warn_line.plain
+    assert any(
+        span.style and "italic" in span.style and "e6a96b" in span.style for span in warn_line.spans
+    ), "warnings pick up warm amber styling"
 
 
 def test_wrapped_syll_reply_preserves_prefix_color():

@@ -20,6 +20,29 @@ app = typer.Typer(
 console = Console()
 
 
+def _prepare_textual_wake_env() -> None:
+    """Strip Textual developer env flags before any Textual import.
+
+    ``TEXTUAL_DEBUG`` / ``TEXTUAL=debug`` otherwise prints internal traces such as
+    ``Unmount() >>> …`` and ``focus was removed`` to stderr after the TUI exits.
+    """
+    import os
+
+    os.environ.pop("TEXTUAL_DEBUG", None)
+    raw = os.environ.get("TEXTUAL", "")
+    if not raw.strip():
+        return
+    kept = [
+        part.strip()
+        for part in raw.split(",")
+        if part.strip() and part.strip().lower() not in {"debug", "devtools"}
+    ]
+    if kept:
+        os.environ["TEXTUAL"] = ",".join(kept)
+    else:
+        os.environ.pop("TEXTUAL", None)
+
+
 async def _drain_gateway_service_tasks(
     service_tasks: list[asyncio.Task],
     *,
@@ -242,6 +265,7 @@ def wake(
     tui_only: bool = typer.Option(False, "--tui-only", help="Start the terminal dashboard without the web app"),
 ):
     """Wake the ghost — bring syll to life (agent loop, channels, cron, heartbeat, web UI, dashboard)."""
+    _prepare_textual_wake_env()
     from syll.cli.startup_sml import StartupProfilerSml
 
     startup_sml = StartupProfilerSml.from_env()

@@ -59,3 +59,4 @@ poetry.lock
 *.mov
 *.mp4
 !docs/media/**/*.mp4
+.claude/

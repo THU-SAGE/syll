@@ -41,6 +41,7 @@ from rich.console import Console, Group
 from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Input, Static
 
@@ -55,6 +56,18 @@ LOG_COLORS = {
     "CRITICAL": "#d17f7c",
     "DEBUG": "#8a7d73",
 }
+
+# Soft pills behind uppercase level tags — stays inside the warm terminal palette.
+LOG_LEVEL_BADGE_BG = {
+    "INFO": "#152218",
+    "SUCCESS": "#152218",
+    "WARNING": "#2c2318",
+    "ERROR": "#2c1818",
+    "CRITICAL": "#321616",
+    "DEBUG": "#161c22",
+}
+
+_LOG_LEVEL_KEYS = frozenset(LOG_COLORS.keys())
 TOKEN_FLUSH_CHARS = 80
 TOKEN_FLUSH_INTERVAL_SECONDS = 0.25
 ACTIVITY_FALLBACK_WIDTH = 80
@@ -245,7 +258,9 @@ class DashboardApp(App):
     """
 
     BINDINGS = [
-        ("ctrl+c", "quit", "quit"),
+        # Quit must win over Input's ctrl+c copy when the field has a selection
+        # (Textual defaults to select-on-focus).
+        Binding("ctrl+c", "quit", "quit", priority=True),
         ("ctrl+l", "clear_log", "clear"),
         ("ctrl+k", "focus_input", "focus input"),
         ("pageup", "scroll_activity_up", "scroll up"),
@@ -303,6 +318,7 @@ class DashboardApp(App):
                     yield Input(
                         placeholder="type a question, then enter…",
                         id="ask-input",
+                        select_on_focus=False,
                     )
                 with Vertical(id="right-col"):
                     yield Static("activity —", id="activity-header")
@@ -430,14 +446,47 @@ class DashboardApp(App):
         line.append(text, style=CHAT_META_STYLE)
         return line
 
-    def _system_line(self, level: str, source: str, message: str) -> Text:
-        body = f"{level.lower()} {source} · {message}"
-        return self._speaker_line(
-            "system",
-            body,
-            label_style=SYSTEM_LABEL_STYLE,
-            body_style=SYSTEM_BODY_STYLE,
-        )
+    def _system_line(
+        self,
+        level: str,
+        source: str,
+        message: str,
+        *,
+        time_str: str | None = None,
+    ) -> Text:
+        """Render system rows — structured badges for real log levels, flat line otherwise."""
+        lvl_key = level.upper()
+        line = Text()
+        line.append(self._chat_label("system"), style=SYSTEM_LABEL_STYLE)
+
+        if lvl_key not in _LOG_LEVEL_KEYS:
+            body = f"{level.lower()} {source} · {message}"
+            line.append(body, style=SYSTEM_BODY_STYLE)
+            return line
+
+        if time_str:
+            line.append(f"{time_str} ", style="dim #6d625c")
+
+        color = LOG_COLORS[lvl_key]
+        badge_bg = LOG_LEVEL_BADGE_BG.get(lvl_key, "#161c22")
+        emphasis = "bold"
+        if lvl_key in ("WARNING", "ERROR", "CRITICAL"):
+            emphasis = "bold italic"
+        line.append(level.upper(), style=f"{emphasis} {color} on {badge_bg}")
+
+        line.append(" ", style="")
+        line.append(f"{source} · ", style="italic dim #a58a7a")
+
+        msg_style = CHAT_BODY_STYLE
+        if lvl_key == "DEBUG":
+            msg_style = "italic #b5aaa3"
+        elif lvl_key == "WARNING":
+            msg_style = "#f2dcc8"
+        elif lvl_key in ("ERROR", "CRITICAL"):
+            msg_style = "#f0ddd9"
+        line.append(message, style=msg_style)
+
+        return line
 
     def _activity_height(self) -> int:
         if self._activity_height_override is not None:
@@ -652,7 +701,7 @@ class DashboardApp(App):
         log = self._log()
         if log is None:
             return
-        log.write(self._system_line(level, name, message))
+        log.write(self._system_line(level, name, message, time_str=time_str))
 
     def _assistant_meta_line(self, text: str) -> Text:
         return self._speaker_line(

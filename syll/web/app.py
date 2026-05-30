@@ -216,6 +216,15 @@ def create_app(
 
     app.state.broadcast_ws = broadcast_ws
 
+    # Expose the broadcaster on the agent loop too, so long-running tools (e.g.
+    # the Adobe GUI tools) can stream live step progress to chat clients without
+    # reaching back into app.state. Read lazily by tools at call time.
+    if agent_loop is not None:
+        try:
+            agent_loop.broadcast_ws = broadcast_ws
+        except Exception:
+            pass
+
     # ── Wrap cron callbacks for broadcast ───────────────────
     if cron_service:
         _orig_on_job = cron_service.on_job

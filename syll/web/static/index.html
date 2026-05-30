@@ -3907,6 +3907,58 @@
             background: var(--error);
         }
 
+        .media-preview-audio {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            height: 100%;
+            padding: 0 1.4rem 0 0.5rem;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            background: var(--surface, rgba(0, 0, 0, 0.2));
+        }
+
+        .media-preview-audio span {
+            max-width: 7rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Has an audio chip: size to content instead of the 60x60 image tile. */
+        .media-preview-item:has(.media-preview-audio) {
+            width: auto;
+            max-width: 11rem;
+        }
+
+        /* Transient live status for a long GUI tool run. */
+        .tool-progress-line {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.4rem 0.6rem;
+            margin: 0.25rem 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0.9;
+        }
+
+        .tool-progress-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tool-progress-thumb {
+            height: 40px;
+            width: auto;
+            max-width: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+
         /* Drop zone overlay */
         .drop-overlay {
             position: absolute;
@@ -6141,13 +6193,26 @@
                                     <div class="message-content" x-html="renderMarkdown(streamingContent)"></div>
                                 </div>
                             </template>
+                            <template x-if="toolProgress">
+                                <div class="tool-progress-line">
+                                    <span class="tool-progress-text" x-text="'🛠 ' + toolProgress.tool + ': ' + toolProgress.message"></span>
+                                    <template x-if="toolProgress.screenshot">
+                                        <img class="tool-progress-thumb" :src="toolProgress.screenshot" @click="openLightbox($event.target.src)" />
+                                    </template>
+                                </div>
+                            </template>
                         </div>
                         <div class="input-container">
                             <template x-if="pendingMedia.length > 0">
                                 <div class="media-preview">
                                     <template x-for="(item, idx) in pendingMedia" :key="idx">
                                         <div class="media-preview-item">
-                                            <img :src="'data:' + item.mime + ';base64,' + item.data" />
+                                            <template x-if="(item.mime || '').startsWith('audio/')">
+                                                <span class="media-preview-audio" :title="item.name || item.mime">&#127925; <span x-text="item.name || 'audio'"></span></span>
+                                            </template>
+                                            <template x-if="!(item.mime || '').startsWith('audio/')">
+                                                <img :src="'data:' + item.mime + ';base64,' + item.data" />
+                                            </template>
                                             <button class="media-preview-remove" @click="pendingMedia.splice(idx, 1)">&times;</button>
                                         </div>
                                     </template>
@@ -6216,12 +6281,12 @@
                             </div>
 
                             <div class="input-wrapper">
-                                <button class="upload-btn" @click="$refs.fileInput.click()" title="Upload image">
+                                <button class="upload-btn" @click="$refs.fileInput.click()" title="Upload image or audio">
                                     &#128206;
                                 </button>
                                 <input
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/*,audio/*"
                                     multiple
                                     x-ref="fileInput"
                                     style="display: none;"

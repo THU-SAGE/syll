@@ -9,6 +9,7 @@ Uses ShowUI-Aloha's planner-actor pattern:
 """
 
 import base64
+import inspect
 import json
 import platform
 import re
@@ -91,6 +92,7 @@ class AlohaPlannerTool(Tool):
         skill_name: str,
         max_steps: int | None = None,
         actor_mode: str | None = None,
+        progress_callback: Any = None,
         **kwargs: Any,
     ) -> str | ToolResult:
         """Execute a GUI task using Planner+Actor loop with trajectory guidance."""
@@ -160,12 +162,17 @@ class AlohaPlannerTool(Tool):
 
         for step in range(1, steps_limit + 1):
             logger.info(f"Planner step {step}/{steps_limit}: {instruction}")
+            await self._emit_progress(progress_callback, {"kind": "gui_step", "step": step, "message": f"Planner step {step}/{steps_limit}"})
 
             # Take screenshot (Issue 9: uses selected_screen)
             screenshot_path = await self._take_screenshot(step)
             if not screenshot_path:
                 return ToolResult(text="Error: Failed to capture screenshot")
             screenshots.append(screenshot_path)
+            await self._emit_progress(
+                progress_callback,
+                {"kind": "screenshot", "step": step, "message": "Captured screenshot", "screenshot": screenshot_path},
+            )
 
             with open(screenshot_path, "rb") as f:
                 screenshot_b64 = base64.b64encode(f.read()).decode()
@@ -198,6 +205,16 @@ class AlohaPlannerTool(Tool):
 
             logger.info(f"  Plan: step={current_step}, action={plan_action}")
             logger.info(f"  Reasoning: {plan_reasoning}")
+            await self._emit_progress(
+                progress_callback,
+                {
+                    "kind": "gui_thought",
+                    "step": step,
+                    "message": plan_reasoning or plan_observation or str(plan_action),
+                    "thought": plan_reasoning,
+                    "action": plan_action,
+                },
+            )
 
             # Check if task is complete
             if plan_action is None or plan_action == "null" or plan_action == "":
@@ -246,6 +263,10 @@ class AlohaPlannerTool(Tool):
                 action_dict["intent"] = plan_action
                 action_dict["plan"] = plan_action
             action_dict["instruction"] = instruction
+            await self._emit_progress(
+                progress_callback,
+                {"kind": "gui_action", "step": step, "message": str(action_dict), "action": str(action_dict)},
+            )
 
             # Preserve explicit planner request for a double-click sequence.
             if action_dict.get("action") == "CLICK" and plan_action:
@@ -256,6 +277,10 @@ class AlohaPlannerTool(Tool):
 
             # Execute action
             success, msg = await executor.execute(action_dict)
+            await self._emit_progress(
+                progress_callback,
+                {"kind": "gui_result", "step": step, "message": msg, "result": msg},
+            )
             click_backend = action_dict.get("click_backend")
             mac_accessibility = action_dict.get("mac_accessibility")
             event_style = action_dict.get("event_style")
@@ -328,6 +353,17 @@ class AlohaPlannerTool(Tool):
                  f"Steps log:\n{json.dumps(steps_log, indent=2)}",
             media=key_shots,
         )
+
+    @staticmethod
+    async def _emit_progress(progress_callback: Any, event: dict[str, Any]) -> None:
+        if not progress_callback:
+            return
+        try:
+            result = progress_callback(event)
+            if inspect.isawaitable(result):
+                await result
+        except Exception as exc:
+            logger.debug(f"Aloha planner progress callback failed: {exc}")
 
     _FIRST_STEP_HIDE_HOTKEY_RE = re.compile(
         r"\b(?:cmd|command)\s*(?:\+|-|\s)\s*h\b", re.IGNORECASE

@@ -214,6 +214,19 @@ async def update_config(body: dict, request: Request):
                 planner_tool._event_store = agent_loop.event_store
                 agent_loop.tools.register(planner_tool)
 
+                # Keep the Adobe tools in sync with the GUI block (same helper
+                # the agent loop uses at construction, so the two cannot drift).
+                from syll.agent.adobe.register import register_adobe_tools
+                register_adobe_tools(
+                    agent_loop.tools,
+                    agent_loop=agent_loop,
+                    gui_config=gui_config,
+                    syll_config=new_config,
+                    workspace=agent_loop.workspace,
+                    skill_store=recorded_skill_store,
+                    event_store=agent_loop.event_store,
+                )
+
                 if hasattr(request.app.state, "gui_skill_store"):
                     request.app.state.gui_skill_store = gui_skill_store
                 request.app.state.recorded_skill_store = recorded_skill_store
@@ -221,6 +234,8 @@ async def update_config(body: dict, request: Request):
 
                 logger.info("Hot-reloaded GUI tools after config change")
             else:
+                from syll.agent.adobe.register import unregister_adobe_tools
+                unregister_adobe_tools(agent_loop.tools)
                 logger.info("Unregistered GUI tools after config change")
 
             reloaded.append("gui")

@@ -2139,9 +2139,18 @@
                 },
 
                 handleEnter(event) {
+                    // While an IME composition is active (e.g. pressing Enter to
+                    // pick a Chinese/Japanese/Korean candidate) Enter must NOT
+                    // send. `isComposing` is the modern signal; keyCode 229 is the
+                    // legacy one some IMEs still emit on the commit keystroke.
+                    if (event.isComposing || event.keyCode === 229) {
+                        return;
+                    }
+                    // Shift+Enter inserts a newline (default behaviour).
                     if (event.shiftKey) {
                         return;
                     }
+                    event.preventDefault();
                     this.sendMessage();
                 },
 

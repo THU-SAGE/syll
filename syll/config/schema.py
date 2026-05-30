@@ -331,6 +331,18 @@ class MCPConfig(BaseModel):
         return self
 
 
+# ── Privacy / data retention ──────────────────────────────────────────
+
+
+class PrivacyConfig(BaseModel):
+    """Controls how much conversation data is persisted to ~/.syll."""
+
+    # full   — store verbatim user + assistant text in the event log (default).
+    # summary — store only the one-line summary; redact verbatim message bodies.
+    # off    — do not write message events to the event log at all.
+    event_log_mode: Literal["full", "summary", "off"] = "full"
+
+
 # ── Root config ────────────────────────────────────────────────────────
 
 
@@ -345,6 +357,7 @@ class Config(BaseSettings):
     identity: IdentityConfig = Field(default_factory=IdentityConfig)
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
     mcp: MCPConfig = Field(default_factory=MCPConfig)
+    privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
 
     @property
     def workspace_path(self) -> Path:

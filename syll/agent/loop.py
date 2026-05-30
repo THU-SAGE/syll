@@ -87,7 +87,10 @@ class AgentLoop:
             restrict_to_workspace=restrict_to_workspace,
             mcp_manager=mcp_manager,
         )
-        self.event_store = EventStore(workspace.parent)
+        _log_mode = "full"
+        if syll_config and getattr(syll_config, "privacy", None):
+            _log_mode = syll_config.privacy.event_log_mode
+        self.event_store = EventStore(workspace.parent, log_mode=_log_mode)
 
         # Phase 1c: track which tool names are owned by the MCP manager so
         # `reload_mcp_tools` can unregister exactly those (no prefix-strip

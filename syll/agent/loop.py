@@ -352,6 +352,9 @@ class AgentLoop:
         iteration = 0
         final_content = None
         collected_media: list[str] = []
+        # Records every assistant-with-tools and tool-result message so the full
+        # turn is persisted to the session (parity with the streaming path).
+        turn_events: list[dict] = []
 
         while iteration < self.max_iterations:
             iteration += 1
@@ -383,6 +386,15 @@ class AgentLoop:
                     tool_call_dicts,
                     reasoning_content=response.provider_extra.get("reasoning_content"),
                 )
+                _assistant_event: dict = {
+                    "role": "assistant",
+                    "content": response.content or "",
+                    "tool_calls": tool_call_dicts,
+                }
+                _reasoning = response.provider_extra.get("reasoning_content")
+                if _reasoning:
+                    _assistant_event["reasoning_content"] = _reasoning
+                turn_events.append(_assistant_event)
 
                 # Execute tools
                 for tool_call in response.tool_calls:
@@ -394,6 +406,13 @@ class AgentLoop:
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )
+                    _result_text = result.text if isinstance(result, ToolResult) else str(result)
+                    turn_events.append({
+                        "role": "tool",
+                        "content": _result_text[:2000],
+                        "tool_call_id": tool_call.id,
+                        "name": tool_call.name,
+                    })
             else:
                 # No tool calls, we're done
                 final_content = response.content
@@ -402,8 +421,12 @@ class AgentLoop:
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
 
-        # Save to session
+        # Save to session — replay the full turn (assistant-with-tools + tool
+        # results) so reloaded/REST history matches the streaming path.
         session.add_message("user", msg.content)
+        for ev in turn_events:
+            ev_extras = {k: v for k, v in ev.items() if k not in ("role", "content")}
+            session.add_message(ev["role"], ev["content"], **ev_extras)
         session.add_message("assistant", final_content)
         self.sessions.save(session)
 

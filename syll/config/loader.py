@@ -2,10 +2,11 @@
 
 import json
 import os
-import shutil
-import warnings
+import tempfile
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 from syll.config.schema import Config
 
@@ -21,73 +22,9 @@ def get_data_dir() -> Path:
     return get_data_path()
 
 
-def _migrate_legacy_env_vars() -> None:
-    """Copy any ``NANOBOT__*`` environment variables to their ``SYLL__*``
-    equivalents so users upgrading from the nanobot-era install keep working
-    without rewriting shell rc / .env / Docker / CI variables.
-
-    One-release backcompat window. Support will be removed in 0.3.0. Does not
-    clobber values the user has already set under the new ``SYLL__`` prefix.
-    """
-    migrated: list[tuple[str, str]] = []
-    for key in list(os.environ.keys()):
-        if not key.startswith("NANOBOT__"):
-            continue
-        new_key = "SYLL__" + key[len("NANOBOT__"):]
-        if new_key in os.environ:
-            continue  # user already set the new one; don't clobber
-        os.environ[new_key] = os.environ[key]
-        migrated.append((key, new_key))
-
-    if migrated:
-        pairs = ", ".join(f"{old}→{new}" for old, new in migrated)
-        warnings.warn(
-            f"Legacy NANOBOT__ environment variables detected and temporarily "
-            f"copied to SYLL__ equivalents ({pairs}). Support for the NANOBOT__ "
-            f"prefix will be removed in 0.3.0. Please rename your environment "
-            f"variables to use the SYLL__ prefix.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-
-def migrate_legacy_workspace() -> Path | None:
-    """If ``~/.nanobot/`` exists but ``~/.syll/`` does not, copy the full tree.
-
-    Transparent for users upgrading from the pre-rename install. The legacy
-    directory is left in place as an automatic backup; users can delete it
-    manually once they've confirmed the migration worked. Returns the target
-    path if migration ran, ``None`` otherwise.
-    """
-    legacy = Path.home() / ".nanobot"
-    target = Path.home() / ".syll"
-
-    if not legacy.exists():
-        return None
-    if target.exists():
-        return None  # already migrated or fresh install
-
-    try:
-        shutil.copytree(legacy, target)
-    except OSError as e:
-        warnings.warn(
-            f"Legacy workspace migration failed: {e}. Your ~/.nanobot/ is "
-            f"untouched. Please copy it to ~/.syll/ manually or open an issue.",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return None
-
-    return target
-
-
 def load_config(config_path: Path | None = None) -> Config:
     """
     Load configuration from file or create default.
-
-    Runs the one-release legacy env-var migration first so
-    ``NANOBOT__TOOLS__GUI__ENABLED`` and friends still shape the returned
-    Config during the 0.2.x series.
 
     Args:
         config_path: Optional path to config file. Uses default if not provided.
@@ -95,8 +32,6 @@ def load_config(config_path: Path | None = None) -> Config:
     Returns:
         Loaded configuration object.
     """
-    _migrate_legacy_env_vars()
-
     path = config_path or get_config_path()
 
     if path.exists():
@@ -122,13 +57,33 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
     """
     path = config_path or get_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+    # Config holds API keys + bot tokens; keep the parent dir owner-only.
+    try:
+        path.parent.chmod(0o700)
+    except OSError as e:
+        logger.warning(f"could not chmod {path.parent}: {e}")
 
     # Convert to camelCase format
     data = config.model_dump()
     data = convert_to_camel(data)
 
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
+    # Write to a temp file in the same dir, lock it down, then atomically
+    # replace the target so readers never see a partial / world-readable file.
+    fd, tmp_path = tempfile.mkstemp(dir=path.parent, prefix=".config-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+        try:
+            os.chmod(tmp_path, 0o600)
+        except OSError as e:
+            logger.warning(f"could not chmod {tmp_path}: {e}")
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def _migrate_config(data: dict) -> dict:

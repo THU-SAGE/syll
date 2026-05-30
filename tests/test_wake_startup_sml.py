@@ -74,7 +74,6 @@ def _install_fake_wake_runtime(monkeypatch, tmp_path: Path):
     fake_loader.load_config = load_config
     fake_loader.get_config_path = lambda: tmp_path / "config.json"
     fake_loader.get_data_dir = lambda: tmp_path / "data"
-    fake_loader.migrate_legacy_workspace = lambda: None
     monkeypatch.setitem(sys.modules, "syll.config.loader", fake_loader)
 
     fake_startup_sound = types.ModuleType("syll.cli.startup_sound")

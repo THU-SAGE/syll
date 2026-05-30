@@ -167,28 +167,13 @@ class SkillsLoader:
         return content
 
     def _parse_syll_metadata(self, raw: str) -> dict:
-        """Parse Syll skill metadata JSON from frontmatter.
-
-        Reads under the canonical ``syll`` key. Falls back to the legacy
-        ``nanobot`` key with a DeprecationWarning for one release cycle
-        (scheduled for removal in 0.3.0) so skills authored before the
-        rename keep working.
-        """
-        import warnings
+        """Parse Syll skill metadata JSON from frontmatter (under the ``syll`` key)."""
         try:
             data = json.loads(raw)
             if not isinstance(data, dict):
                 return {}
             if "syll" in data:
                 return data["syll"]
-            if "nanobot" in data:
-                warnings.warn(
-                    "Skill metadata key 'nanobot' is deprecated; rename to 'syll'. "
-                    "Support for the legacy key will be removed in 0.3.0.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                return data["nanobot"]
             return {}
         except (json.JSONDecodeError, TypeError):
             return {}

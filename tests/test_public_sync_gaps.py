@@ -71,12 +71,9 @@ def _make_agent_loop():
 
 def test_pet_api_supports_both_syll_and_ghost_routes(tmp_path, monkeypatch):
     new_prefs = tmp_path / "ghost_prefs.json"
-    legacy_syll = tmp_path / "legacy-syll.json"
-    legacy_ghost = tmp_path / "legacy-ghost.json"
-    legacy_ghost.write_text(json.dumps({"size": "L", "notifications_enabled": False}))
+    new_prefs.write_text(json.dumps({"size": "L", "notifications_enabled": False}))
 
     monkeypatch.setattr(ghost_routes, "_PREFS_PATH", new_prefs)
-    monkeypatch.setattr(ghost_routes, "_LEGACY_PREF_PATHS", (legacy_syll, legacy_ghost))
 
     tmp = Path(tempfile.mkdtemp())
     app_instance = create_app(
@@ -217,7 +214,7 @@ def test_cli_banner_uses_shared_syll_title_block():
     assert title_lines[-1] == "╶  your syll in the shell  ╴"
 
 
-def test_index_html_prefers_syll_storage_keys_with_nanobot_fallback():
+def test_index_html_uses_syll_storage_keys():
     # Phase 1a moved the inline syllApp() factory into static/app.js.
     # Storage-key invariants now live in app.js; the rest of the script
     # surface (HTML markup) is still in index.html.
@@ -225,13 +222,12 @@ def test_index_html_prefers_syll_storage_keys_with_nanobot_fallback():
     app_js = (static / "app.js").read_text(encoding="utf-8")
 
     assert "localStorage.getItem('syll-theme')" in app_js
-    assert "localStorage.getItem('nanobot-theme')" in app_js
     assert "localStorage.setItem('syll-theme', 'dark')" in app_js
     assert "localStorage.setItem('syll-theme', 'light')" in app_js
-    assert "localStorage.setItem('nanobot-theme'" not in app_js
     assert "localStorage.getItem('syll-syll-visible')" in app_js
-    assert "localStorage.getItem('nanobot-syll-visible')" in app_js
     assert "localStorage.setItem('syll-syll-visible', this.syllVisible)" in app_js
+    # Legacy nanobot-* storage keys must be fully gone — no reads, no writes.
+    assert "nanobot-" not in app_js
 
 
 def test_index_html_keeps_demo_recording_workbench_surface():

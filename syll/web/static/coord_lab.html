@@ -9,7 +9,7 @@
     <script>
         // Apply persisted theme before paint to avoid flash of dark mode in light users.
         try {
-            const saved = localStorage.getItem('nanobot-theme');
+            const saved = localStorage.getItem('syll-theme');
             if (saved === 'light') {
                 document.documentElement.setAttribute('data-theme', 'light');
             }
@@ -682,7 +682,7 @@ function coordLab() {
 
         syncThemeFromStorage() {
             try {
-                const saved = localStorage.getItem('nanobot-theme');
+                const saved = localStorage.getItem('syll-theme');
                 this.darkMode = saved !== 'light';
             } catch (e) {
                 this.darkMode = true;
@@ -693,10 +693,10 @@ function coordLab() {
             this.darkMode = !this.darkMode;
             if (this.darkMode) {
                 document.documentElement.removeAttribute('data-theme');
-                try { localStorage.setItem('nanobot-theme', 'dark'); } catch (e) {}
+                try { localStorage.setItem('syll-theme', 'dark'); } catch (e) {}
             } else {
                 document.documentElement.setAttribute('data-theme', 'light');
-                try { localStorage.setItem('nanobot-theme', 'light'); } catch (e) {}
+                try { localStorage.setItem('syll-theme', 'light'); } catch (e) {}
             }
             if (this.currentPoint) this.renderCanvas();
         },

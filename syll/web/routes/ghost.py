@@ -10,10 +10,6 @@ router = APIRouter(prefix="/syll", tags=["syll"])
 legacy_router = APIRouter(prefix="/ghost", tags=["ghost"])
 
 _PREFS_PATH = Path.home() / ".syll" / "ghost_prefs.json"
-_LEGACY_PREF_PATHS = (
-    Path.home() / ".nanobot" / "syll_prefs.json",
-    Path.home() / ".nanobot" / "ghost_prefs.json",
-)
 _SVG_DIR = Path(__file__).parent.parent / "static" / "ghost"
 
 _DEFAULT_CONFIG = {
@@ -49,7 +45,7 @@ GhostConfigUpdate = SyllConfigUpdate
 
 def _read_config() -> dict:
     data = {}
-    for path in (_PREFS_PATH, *_LEGACY_PREF_PATHS):
+    for path in (_PREFS_PATH,):
         try:
             data = json.loads(path.read_text())
             break

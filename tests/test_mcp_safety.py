@@ -70,7 +70,7 @@ def test_command_hash_changes_when_env_changes():
 
 
 def test_command_hash_changes_when_cwd_changes():
-    a = _stdio(command="node", cwd="/Users/bo/work")
+    a = _stdio(command="node", cwd="/tmp/work")
     b = _stdio(command="node", cwd="/tmp")
     assert command_hash(a) != command_hash(b)
 

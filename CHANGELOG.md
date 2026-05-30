@@ -9,13 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Photoshop and Audition conversational tools (`photoshop_cutout`,
+  `clean_audio_in_audition`, plus an always-on `audio_inspect`): drive the real
+  Adobe app on a macOS host and return a measured before/after verdict. Gated
+  behind `tools.gui.enabled`; optional deps under the `[adobe]` extra. See
+  ADR-0002.
+- `privacy.event_log_mode` (`full` | `summary` | `off`) to control how much
+  conversation text is persisted to the event log.
+
 ### Changed
 
+- Default `gateway.host` is now `127.0.0.1` (loopback). Binding to `0.0.0.0` is
+  an explicit opt-in. See ADR-0003.
+
 ### Fixed
+
+- The documented `SYLL__SECTION__FIELD` environment-variable form now resolves
+  to the matching config field.
+- Chat and intent inputs no longer send while an IME composition is active
+  (e.g. pressing Enter to commit a Chinese/Japanese candidate).
+- `REST /chat/message` now persists the full tool-call turn to the session,
+  matching the WebSocket path.
 
 ### Removed
 
 ### Security
+
+- `web_fetch` now rejects loopback / private / link-local / reserved addresses
+  and re-validates each redirect hop (SSRF).
+- `config.json` is written `0600` via an atomic replace; its parent directory is
+  set `0700`.
+- `GET /api/v1/config` strips `user:pass@` credentials from URL-valued fields.
+- `restrict_to_workspace` uses real path containment (no sibling-prefix escape).
 
 ## [0.2.0] — 2026-04-14 — "First Public Syll Release"
 

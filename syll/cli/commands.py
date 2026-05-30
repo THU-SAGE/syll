@@ -116,7 +116,7 @@ def onboard():
     console.print("  1. Add your API key to [cyan]~/.syll/config.json[/cyan]")
     console.print("     Get one at: https://openrouter.ai/keys")
     console.print("  2. Chat: [cyan]syll agent -m \"Hello!\"[/cyan]")
-    console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/THU-SAGE/syll#-chat-apps[/dim]")
+    console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/THU-SAGE/syll#channels[/dim]")
 
 
 

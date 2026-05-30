@@ -41,6 +41,7 @@ class ChannelManager:
                     groq_api_key=self.config.models.stt.api_key,
                 )
                 logger.info("Telegram channel enabled")
+                self._warn_if_open("telegram", self.config.channels.telegram.allow_from)
             except ImportError as e:
                 logger.warning(f"Telegram channel not available: {e}")
 
@@ -52,6 +53,7 @@ class ChannelManager:
                     self.config.channels.whatsapp, self.bus
                 )
                 logger.info("WhatsApp channel enabled")
+                self._warn_if_open("whatsapp", self.config.channels.whatsapp.allow_from)
             except ImportError as e:
                 logger.warning(f"WhatsApp channel not available: {e}")
 
@@ -63,6 +65,7 @@ class ChannelManager:
                     self.config.channels.discord, self.bus
                 )
                 logger.info("Discord channel enabled")
+                self._warn_if_open("discord", self.config.channels.discord.allow_from)
             except ImportError as e:
                 logger.warning(f"Discord channel not available: {e}")
 
@@ -74,8 +77,18 @@ class ChannelManager:
                     self.config.channels.feishu, self.bus
                 )
                 logger.info("Feishu channel enabled")
+                self._warn_if_open("feishu", self.config.channels.feishu.allow_from)
             except ImportError as e:
                 logger.warning(f"Feishu channel not available: {e}")
+
+    @staticmethod
+    def _warn_if_open(name: str, allow_from: list[str]) -> None:
+        """Warn when a channel is enabled with an empty allowFrom (fail-open)."""
+        if not allow_from:
+            logger.warning(
+                f"{name} channel enabled with EMPTY allowFrom — ANYONE can message "
+                f"this bot and reach tool execution; set allowFrom to restrict access."
+            )
 
     async def start_all(self) -> None:
         """Start WhatsApp channel and the outbound dispatcher."""

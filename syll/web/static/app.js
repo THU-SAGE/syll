@@ -631,12 +631,12 @@
                             body: JSON.stringify({ enabled: !!this.mcpEnabled }),
                         });
                         if (!r.ok) {
-                            alert('MCP settings save failed: ' + r.status + ' ' + (await r.text()));
+                            this.showToast('MCP settings save failed: ' + r.status + ' ' + (await r.text()), 'error');
                             return;
                         }
                         await this.loadMcpServers();
                     } catch (e) {
-                        alert('MCP settings save failed: ' + e);
+                        this.showToast('MCP settings save failed: ' + e, 'error');
                     } finally {
                         this.mcpSettingsSaving = false;
                     }
@@ -863,7 +863,7 @@
                 async mcpSave() {
                     if (!this.mcpForm) return;
                     if (!this.mcpForm.name) {
-                        alert('Server name is required');
+                        this.showToast('Server name is required', 'error');
                         return;
                     }
                     this.mcpSaving = true;
@@ -878,7 +878,7 @@
                             // Consent or master-switch refusal.
                             const detail = (await r.json()).detail || {};
                             if (detail.error === 'mcp_master_disabled') {
-                                alert(detail.message);
+                                this.showToast(detail.message, 'error');
                                 return;
                             }
                             this.mcpConfirm = {
@@ -891,7 +891,7 @@
                             return;
                         }
                         if (!r.ok) {
-                            alert('Save failed: ' + r.status + ' ' + (await r.text()));
+                            this.showToast('Save failed: ' + r.status + ' ' + (await r.text()), 'error');
                             return;
                         }
                         this.mcpForm = null;
@@ -913,7 +913,7 @@
                             body: JSON.stringify(body),
                         });
                         if (!r.ok) {
-                            alert('Save failed: ' + r.status + ' ' + (await r.text()));
+                            this.showToast('Save failed: ' + r.status + ' ' + (await r.text()), 'error');
                             return;
                         }
                         this.mcpConfirm = null;
@@ -921,7 +921,7 @@
                         this.mcpTestResult = null;
                         await this.loadMcpServers();
                     } catch (e) {
-                        alert('Save failed: ' + e);
+                        this.showToast('Save failed: ' + e, 'error');
                     }
                 },
 
@@ -929,7 +929,7 @@
                     if (!confirm(`Delete MCP server "${name}"?`)) return;
                     const r = await fetch(`/api/v1/mcp/servers/${name}`, { method: 'DELETE' });
                     if (!r.ok) {
-                        alert('Delete failed: ' + r.status);
+                        this.showToast('Delete failed: ' + r.status, 'error');
                         return;
                     }
                     await this.loadMcpServers();
@@ -954,7 +954,7 @@
                         if (r.status === 409) {
                             const detail = (await r.json()).detail || {};
                             if (detail.error === 'mcp_master_disabled') {
-                                alert(detail.message);
+                                this.showToast(detail.message, 'error');
                                 return;
                             }
                             // Hand off to the existing consent modal — confirm
@@ -969,12 +969,12 @@
                             return;
                         }
                         if (!r.ok) {
-                            alert('Enable failed: ' + r.status + ' ' + (await r.text()));
+                            this.showToast('Enable failed: ' + r.status + ' ' + (await r.text()), 'error');
                             return;
                         }
                         await this.loadMcpServers();
                     } catch (e) {
-                        alert('Enable failed: ' + e);
+                        this.showToast('Enable failed: ' + e, 'error');
                     }
                 },
 
@@ -992,19 +992,19 @@
                             body: JSON.stringify(body),
                         });
                         if (!r.ok) {
-                            alert('Disable failed: ' + r.status + ' ' + (await r.text()));
+                            this.showToast('Disable failed: ' + r.status + ' ' + (await r.text()), 'error');
                             return;
                         }
                         await this.loadMcpServers();
                     } catch (e) {
-                        alert('Disable failed: ' + e);
+                        this.showToast('Disable failed: ' + e, 'error');
                     }
                 },
 
                 async mcpReconnect(name) {
                     const r = await fetch(`/api/v1/mcp/servers/${name}/reconnect`, { method: 'POST' });
                     if (!r.ok) {
-                        alert('Reconnect failed: ' + r.status);
+                        this.showToast('Reconnect failed: ' + r.status, 'error');
                     }
                     await this.loadMcpServers();
                 },
@@ -1637,7 +1637,6 @@
                         const text = await response.text();
                         let result = {};
                         try { result = JSON.parse(text); } catch (_) {}
-                        console.log('saveProfile response:', response.status, result);
 
                         if (!response.ok) {
                             this.profileStatus = 'Error ' + response.status + ': ' + (result.detail || text || 'save failed');
@@ -1939,12 +1938,10 @@
 
                     this.ws.onopen = () => {
                         this.wsConnected = true;
-                        console.log('WebSocket connected');
                     };
 
                     this.ws.onclose = () => {
                         this.wsConnected = false;
-                        console.log('WebSocket disconnected');
                         setTimeout(() => this.connectWebSocket(), 3000);
                     };
 
@@ -1972,7 +1969,6 @@
                 handleWebSocketMessage(data) {
                     switch (data.type) {
                         case 'status':
-                            console.log('Status:', data.message);
                             this.syllUpdateState('working');
                             break;
 

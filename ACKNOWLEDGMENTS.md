@@ -4,10 +4,10 @@ Syll has three main lineages. This file makes the public-facing credits explicit
 
 ## nanobot
 
-Syll grows out of the earlier `nanobot` agent framework. The channel → bus →
-agent-loop shape, markdown skill loading, editable workspace bootstrap, and the
-self-hosted companion framing were first assembled there and then reworked
-during the rename to Syll.
+Syll began as a fork of the third-party `HKUDS/nanobot` agent framework (MIT).
+The channel → bus → agent-loop shape, markdown skill loading, and the
+editable-workspace bootstrap originate there; they were extended and reworked
+as the project grew into Syll.
 
 ## ShowUI-Aloha
 

@@ -77,9 +77,7 @@
 
         <h2>1. System overview</h2>
 
-        <div class="placeholder">
-            figure 1: system architecture diagram (placeholder — to be rendered)
-        </div>
+        <figure><img src="assets/arch.png" alt="Syll system architecture"><figcaption>Figure 1: system architecture</figcaption></figure>
 
         <p>
             The system is organized around a single-process <em>agent loop</em> that
@@ -321,13 +319,16 @@
 
         <h2>5. Related work</h2>
 
-        <div class="placeholder">
-            related work section — to be written.<br/>
-            brief touchpoints: Replika (character-based but cloud-hosted), Character.AI
-            (serverside, no lifecycle outside chat), Rivet / LangGraph (workflow-first,
-            not companion-first), Open WebUI (interface-first, no persona layer),
-            AutoGen Studio (developer-first, no character).
-        </div>
+        <p>
+            Existing companion systems such as Replika and Character.AI are
+            character-based but cloud-hosted and serverside, with no agent lifecycle
+            outside the chat window. Workflow-first frameworks like Rivet and LangGraph
+            optimize for orchestration rather than companionship, while interface-first
+            projects like Open WebUI and developer-first tools like AutoGen Studio offer
+            no persona layer or character. Syll differs by treating persona as
+            user-editable configuration on a self-hosted system, giving the agent a
+            lifecycle and presence that persists beyond a single conversation.
+        </p>
 
         <h2>6. License and artifact availability</h2>
 

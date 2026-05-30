@@ -464,7 +464,7 @@ Deeper dive: [`docs/references/architecture.md`](docs/references/architecture.md
 
 Syll has three main lineages:
 
-- **nanobot** — the current agent framework grows out of the earlier `nanobot` codebase: bus + channel plumbing, agent loop shape, markdown skills, and the editable workspace bootstrap all started there.
+- **nanobot** — Syll began as a fork of the third-party `HKUDS/nanobot` project (MIT): the bus + channel plumbing, agent-loop shape, markdown skills, and editable-workspace bootstrap originate there.
 - **ShowUI-Aloha** — the `syll/agent/aloha/` planner / actor / learn path is based on `ShowUI-Aloha`; file-level `Adapted from ...` notes are kept in the derived modules.
 - **UI-TARS** — the GUI automation path references `UI-TARS` for screenshot → action loops, prompting shape, and desktop-control patterns.
 

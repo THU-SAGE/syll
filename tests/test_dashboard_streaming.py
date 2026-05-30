@@ -647,14 +647,14 @@ def test_dashboard_reply_formats_markdown_fences_for_tui_readability():
 
     app._write_reply(
         fake_log,
-        "记忆路径：\n\n```\n/Users/bytedance/.syll/workspace/memory\n```\n\n- MEMORY.md\n- 2026-05-05.md",
+        "记忆路径：\n\n```\n/home/user/.syll/workspace/memory\n```\n\n- MEMORY.md\n- 2026-05-05.md",
         trailing_blank=False,
     )
 
     rendered = "\n".join(fake_log.lines)
     assert "```" not in rendered
     assert "syll      记忆路径：" in rendered
-    assert "                /Users/bytedance/.syll/workspace/memory" in rendered
+    assert "                /home/user/.syll/workspace/memory" in rendered
     assert "             • MEMORY.md" in rendered
     assert "             • 2026-05-05.md" in rendered
 

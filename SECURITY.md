@@ -185,8 +185,18 @@ For production use:
 
 - **Logs may contain sensitive information** - secure log files appropriately
 - **LLM providers see your prompts** - review their privacy policies
-- **Chat history is stored locally** - protect the `~/.syll` directory
-- **API keys are in plain text** - use OS keyring for production
+- **Conversations are stored locally in full** - by default the **verbatim text of
+  every user and assistant turn** is written under `~/.syll/sessions/*.jsonl` and
+  `~/.syll/events/*.jsonl` (plus media file paths). Protect the `~/.syll`
+  directory. To reduce what is retained, set `privacy.event_log_mode` in
+  `~/.syll/config.json`:
+  - `"full"` (default) — store verbatim message text in the event log.
+  - `"summary"` — keep only the one-line summary; redact verbatim message bodies.
+  - `"off"` — do not write message events to the event log at all.
+  (This controls the event log; session history under `~/.syll/sessions/` is what
+  the agent replays as conversation memory.)
+- **API keys are in plain text** - the config file is written `0600`; use an OS
+  keyring for production
 
 ### 10. Incident Response
 

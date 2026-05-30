@@ -51,14 +51,19 @@ class DailyStats(BaseModel):
 class EventStore:
     """Event storage manager using JSONL files."""
 
-    def __init__(self, base_dir: Path | None = None):
+    def __init__(self, base_dir: Path | None = None, *, log_mode: str = "full"):
         """Initialize event store.
 
         Args:
             base_dir: Base directory for event storage (default: ~/.syll)
+            log_mode: Conversation-text retention for ``message`` events —
+                ``"full"`` (verbatim, default), ``"summary"`` (redact bodies to
+                the one-line summary), or ``"off"`` (do not persist message
+                events at all). See ``PrivacyConfig.event_log_mode``.
         """
         if base_dir is None:
             base_dir = Path.home() / ".syll"
+        self.log_mode = log_mode if log_mode in ("full", "summary", "off") else "full"
         self.base_dir = Path(base_dir)
         self.events_dir = self.base_dir / "events"
         self.stats_dir = self.base_dir / "stats"
@@ -75,6 +80,22 @@ class EventStore:
         Args:
             event: Event to log
         """
+        # Privacy: redact / drop verbatim conversation bodies for message events
+        # according to the configured retention mode. Non-message events
+        # (memory/action/alert) are unaffected.
+        if self.log_mode != "full" and event.event_type == "message":
+            if self.log_mode == "off":
+                return  # do not persist conversation bodies at all
+            # "summary": keep the event shell (so stats/heatmap still count it)
+            # but replace the verbatim text with the one-line summary.
+            event = event.model_copy(
+                update={
+                    "content": event.content.model_copy(
+                        update={"text": event.summary or None}
+                    )
+                }
+            )
+
         event_date = event.timestamp.date()
         event_file = self.events_dir / f"{event_date.isoformat()}.jsonl"
 

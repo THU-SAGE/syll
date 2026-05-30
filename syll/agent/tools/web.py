@@ -1,11 +1,13 @@
 """Web tools: web_search and web_fetch."""
 
 import html
+import ipaddress
 import json
 import os
 import re
+import socket
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -30,14 +32,75 @@ def _normalize(text: str) -> str:
     return re.sub(r'\n{3,}', '\n\n', text).strip()
 
 
+def _is_blocked_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True iff the address falls in a range we must never fetch (SSRF).
+
+    Unwraps IPv4-mapped IPv6 (e.g. ``::ffff:127.0.0.1``) first so the check
+    is version-stable across Python 3.11/3.12/3.13, mirroring the idiom in
+    ``syll/web/auth.py``.
+    """
+    if isinstance(addr, ipaddress.IPv6Address):
+        mapped = addr.ipv4_mapped
+        if mapped is not None:
+            addr = mapped
+    return (
+        addr.is_loopback
+        or addr.is_private
+        or addr.is_link_local
+        or addr.is_reserved
+        or addr.is_multicast
+        or addr.is_unspecified
+    )
+
+
 def _validate_url(url: str) -> tuple[bool, str]:
-    """Validate URL: must be http(s) with valid domain."""
+    """Validate URL: must be http(s) with a public domain.
+
+    Resolves the hostname and rejects any URL that points (directly via a
+    literal IP, or via DNS) at a loopback / private / link-local / reserved /
+    multicast / unspecified address. This blocks SSRF against localhost and
+    internal services (e.g. cloud metadata at 169.254.169.254).
+    """
     try:
         p = urlparse(url)
         if p.scheme not in ('http', 'https'):
             return False, f"Only http/https allowed, got '{p.scheme or 'none'}'"
         if not p.netloc:
             return False, "Missing domain"
+
+        host = p.hostname
+        if not host:
+            return False, "Missing host"
+
+        # "localhost" never reaches DNS reliably; reject it outright.
+        if host.lower() == "localhost":
+            return False, "Refusing to fetch a local/internal address"
+
+        # Literal IP host: validate directly without DNS.
+        try:
+            literal = ipaddress.ip_address(host)
+        except ValueError:
+            literal = None
+        if literal is not None:
+            if _is_blocked_ip(literal):
+                return False, "Refusing to fetch a local/internal address"
+            return True, ""
+
+        # Hostname: resolve and reject if ANY resolved IP is blocked.
+        try:
+            infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == 'https' else 80))
+        except OSError as e:
+            return False, f"Could not resolve host '{host}': {e}"
+        if not infos:
+            return False, f"Could not resolve host '{host}'"
+        for info in infos:
+            ip_str = info[4][0]
+            try:
+                addr = ipaddress.ip_address(ip_str)
+            except ValueError:
+                continue
+            if _is_blocked_ip(addr):
+                return False, "Refusing to fetch a local/internal address"
         return True, ""
     except Exception as e:
         return False, str(e)
@@ -119,12 +182,27 @@ class WebFetchTool(Tool):
             return json.dumps({"error": f"URL validation failed: {error_msg}", "url": url})
 
         try:
+            # Follow redirects manually so each hop's destination is
+            # re-validated against the SSRF blocklist (httpx's built-in
+            # follow_redirects skips per-hop checks, enabling redirect-to-
+            # localhost bypasses).
+            current_url = url
             async with httpx.AsyncClient(
-                follow_redirects=True,
-                max_redirects=MAX_REDIRECTS,
+                follow_redirects=False,
                 timeout=30.0
             ) as client:
-                r = await client.get(url, headers={"User-Agent": USER_AGENT})
+                for _ in range(MAX_REDIRECTS + 1):
+                    r = await client.get(current_url, headers={"User-Agent": USER_AGENT})
+                    if r.is_redirect and r.has_redirect_location:
+                        next_url = urljoin(current_url, r.headers["location"])
+                        is_valid, error_msg = _validate_url(next_url)
+                        if not is_valid:
+                            return json.dumps({"error": f"Redirect validation failed: {error_msg}", "url": next_url})
+                        current_url = next_url
+                        continue
+                    break
+                else:
+                    return json.dumps({"error": f"Too many redirects (>{MAX_REDIRECTS})", "url": url})
                 r.raise_for_status()
 
             ctype = r.headers.get("content-type", "")

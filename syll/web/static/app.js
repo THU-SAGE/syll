@@ -129,6 +129,7 @@
                 toasts: [],
                 pendingToolCalls: {},
                 pendingMedia: [],
+                toolProgress: null,
                 isDragging: false,
                 lightboxSrc: null,
                 darkMode: true,
@@ -2010,6 +2011,24 @@
                             this.scrollToBottom(true);
                             break;
 
+                        case 'tool_progress': {
+                            // Out-of-band live progress emitted during a long
+                            // GUI tool run (e.g. an Adobe walkthrough). Keep a
+                            // single transient status line near the active
+                            // assistant turn; cleared on the next done/error.
+                            let shot = null;
+                            if (data.screenshot && data.screenshot.data) {
+                                shot = 'data:' + (data.screenshot.mime || 'image/png') + ';base64,' + data.screenshot.data;
+                            }
+                            this.toolProgress = {
+                                tool: data.tool || 'tool',
+                                message: data.message || data.step || '',
+                                screenshot: shot,
+                            };
+                            this.scrollToBottom(true);
+                            break;
+                        }
+
                         case 'done':
                             if (this.isStreaming && this.streamingContent) {
                                 const doneMsg = {
@@ -2025,6 +2044,7 @@
                             this.isStreaming = false;
                             this.streamingContent = '';
                             this.pendingToolCalls = {};
+                            this.toolProgress = null;
                             this.loadSessions();
                             this.scrollToBottom();
                             this.syllUpdateState('idle');
@@ -2034,6 +2054,7 @@
                             this.showToast(data.message || 'An error occurred', 'error');
                             this.isStreaming = false;
                             this.streamingContent = '';
+                            this.toolProgress = null;
                             this.syllUpdateState('error');
                             break;
 
@@ -2369,22 +2390,23 @@
                     this.isDragging = false;
                     const files = event.dataTransfer.files;
                     if (files) {
-                        const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
-                        if (imageFiles.length) {
-                            this.addFiles(imageFiles);
+                        const mediaFiles = Array.from(files).filter(f => f.type.startsWith('image/') || f.type.startsWith('audio/'));
+                        if (mediaFiles.length) {
+                            this.addFiles(mediaFiles);
                         }
                     }
                 },
 
                 addFiles(files) {
                     for (const file of files) {
-                        if (!file.type.startsWith('image/')) continue;
+                        if (!file.type.startsWith('image/') && !file.type.startsWith('audio/')) continue;
                         const reader = new FileReader();
                         reader.onload = (e) => {
                             const b64 = e.target.result.split(',')[1];
                             this.pendingMedia.push({
                                 mime: file.type,
                                 data: b64,
+                                name: file.name || '',
                             });
                         };
                         reader.readAsDataURL(file);

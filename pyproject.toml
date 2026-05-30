@@ -63,6 +63,14 @@ gui = [
     "pynput>=1.7.7",
     "pyobjc-framework-Quartz>=10.3; sys_platform == 'darwin'",
 ]
+# Adobe Photoshop/Audition conversational tools (macOS host with the apps
+# installed). Pillow is needed for the cutout export/verify; pyloudnorm gives
+# the audio metrics integrated-LUFS (gracefully skipped if absent). ffmpeg is a
+# system binary checked at preflight, not a Python dependency.
+adobe = [
+    "Pillow>=10.0.0",
+    "pyloudnorm>=0.1.0",
+]
 
 [project.scripts]
 syll = "syll.cli.commands:app"

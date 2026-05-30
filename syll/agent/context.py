@@ -258,18 +258,36 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
         return messages
 
     def _build_user_content(self, text: str, media: list[str] | None) -> str | list[dict[str, Any]]:
-        """Build user message content with optional base64-encoded images."""
+        """Build user message content with optional attachments.
+
+        Image media is inlined as base64 for the vision model. In addition, the
+        local path of *every* attachment (image or audio) is surfaced as a text
+        note so file-operating tools (e.g. ``photoshop_cutout`` /
+        ``clean_audio_in_audition``) can be handed the path — the model
+        otherwise never learns where an upload was saved, and non-image
+        attachments would be invisible to it entirely.
+        """
         if not media:
             return text
 
         images = []
+        attached: list[str] = []
         for path in media:
             p = Path(path)
-            mime, _ = mimetypes.guess_type(path)
-            if not p.is_file() or not mime or not mime.startswith("image/"):
+            if not p.is_file():
                 continue
-            b64 = base64.b64encode(p.read_bytes()).decode()
-            images.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})
+            mime, _ = mimetypes.guess_type(path)
+            mime = mime or "application/octet-stream"
+            if mime.startswith("image/"):
+                b64 = base64.b64encode(p.read_bytes()).decode()
+                images.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})
+            attached.append(f"- {path} ({mime})")
+
+        if attached:
+            text = (
+                f"{text}\n\n[Attached files saved locally — pass the relevant path to a tool "
+                f"that operates on a file:\n" + "\n".join(attached) + "]"
+            )
 
         if not images:
             return text

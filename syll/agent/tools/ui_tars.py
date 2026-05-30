@@ -14,6 +14,7 @@ Architecture follows UI-TARS-desktop patterns:
 """
 
 import base64
+import inspect
 import mimetypes
 import re
 import tempfile
@@ -148,7 +149,7 @@ class UITarsTool(Tool):
 
     async def execute(
         self, instruction: str, max_steps: int | None = None,
-        skill_name: str | None = None, **kwargs: Any,
+        skill_name: str | None = None, progress_callback: Any = None, **kwargs: Any,
     ) -> str | ToolResult:
         """Execute a GUI task using multi-turn screenshot -> UI-TARS -> action loop.
 
@@ -169,12 +170,17 @@ class UITarsTool(Tool):
 
         for step in range(1, steps + 1):
             logger.info(f"GUI step {step}/{steps}: {instruction}")
+            await self._emit_progress(progress_callback, {"kind": "gui_step", "step": step, "message": f"GUI step {step}/{steps}"})
 
             # --- Screenshot with retry ---
             screenshot_path = await self._take_screenshot_with_retry(step)
             if not screenshot_path:
                 return ToolResult(text="Error: Failed to capture screenshot after retries")
             screenshots.append(screenshot_path)
+            await self._emit_progress(
+                progress_callback,
+                {"kind": "screenshot", "step": step, "message": "Captured screenshot", "screenshot": screenshot_path},
+            )
 
             # Read screenshot as base64
             with open(screenshot_path, "rb") as f:
@@ -205,6 +211,9 @@ class UITarsTool(Tool):
             ))
             logger.info(f"  Thought: {thought}")
             logger.info(f"  Action: {action_str}")
+            if thought:
+                await self._emit_progress(progress_callback, {"kind": "gui_thought", "step": step, "message": thought, "thought": thought})
+            await self._emit_progress(progress_callback, {"kind": "gui_action", "step": step, "message": action_str, "action": action_str})
 
             # --- Stuck detection ---
             recent_actions.append(action_str)
@@ -241,6 +250,7 @@ class UITarsTool(Tool):
             # --- Execute action with retry ---
             intent_text = "\n".join(part for part in (instruction, thought) if part)
             success, msg = await self._execute_action_with_retry(action_str, intent_text=intent_text)
+            await self._emit_progress(progress_callback, {"kind": "gui_result", "step": step, "message": msg, "result": msg})
             if not success:
                 return ToolResult(
                     text=f"Action failed at step {step}: {msg}",
@@ -280,6 +290,17 @@ class UITarsTool(Tool):
         if len(screenshots) == 1:
             return screenshots[:]
         return [screenshots[0], screenshots[-1]]
+
+    @staticmethod
+    async def _emit_progress(progress_callback: Any, event: dict[str, Any]) -> None:
+        if not progress_callback:
+            return
+        try:
+            result = progress_callback(event)
+            if inspect.isawaitable(result):
+                await result
+        except Exception as exc:
+            logger.debug(f"UI-TARS progress callback failed: {exc}")
 
     # ----- Retry wrappers -----
 

@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import tempfile
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
@@ -25,19 +26,42 @@ class ChatResponse(BaseModel):
     media: list[str] = []
 
 
-def _save_temp_image(data_b64: str, mime: str) -> str:
-    """Decode base64 image and save to a temp file, return file path."""
-    ext = ".png"
-    if "jpeg" in mime or "jpg" in mime:
-        ext = ".jpg"
-    elif "gif" in mime:
-        ext = ".gif"
-    elif "webp" in mime:
-        ext = ".webp"
+# MIME → file extension for inbound uploads. Correct extensions are
+# load-bearing: _encode_media and the frontend branch on the MIME guessed
+# from the extension (<img> vs audio player), and the Audition tool's ffmpeg
+# normalization keys off it too.
+_MEDIA_EXT = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/wave": ".wav",
+    "audio/mpeg": ".mp3",
+    "audio/mp3": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/x-m4a": ".m4a",
+    "audio/aac": ".aac",
+    "audio/ogg": ".ogg",
+    "audio/flac": ".flac",
+    "audio/x-flac": ".flac",
+}
+
+
+def _save_temp_media(data_b64: str, mime: str) -> str:
+    """Decode a base64 upload (image or audio) to a temp file, return its path."""
+    ext = _MEDIA_EXT.get((mime or "").lower())
+    if ext is None:
+        subtype = (mime or "").split("/")[-1].split(";")[0].strip()
+        ext = f".{subtype}" if subtype.isalnum() else ".bin"
 
     media_dir = Path(tempfile.gettempdir()) / "syll_media"
     media_dir.mkdir(parents=True, exist_ok=True)
-    path = media_dir / f"upload_{id(data_b64)}{ext}"
+    # uuid4, not id(): id() reuses freed addresses across requests, which could
+    # collide and overwrite another request's still-referenced upload.
+    path = media_dir / f"upload_{uuid.uuid4().hex}{ext}"
     path.write_bytes(base64.b64decode(data_b64))
     return str(path)
 
@@ -105,7 +129,7 @@ async def chat_ws(websocket: WebSocket, session: str = "web:default"):
             for item in user_media:
                 if isinstance(item, dict) and "data" in item:
                     mime = item.get("mime", "image/png")
-                    path = _save_temp_image(item["data"], mime)
+                    path = _save_temp_media(item["data"], mime)
                     media_paths.append(path)
 
             try:

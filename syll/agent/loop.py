@@ -178,6 +178,18 @@ class AgentLoop:
         self.tools.register(FilePreviewTool())
         self.tools.register(AttachFileTool())
 
+        # Audio inspection — deterministic before/after WAV metrics. Framework-free
+        # (numpy only; LUFS via optional pyloudnorm), so it is always available and
+        # does not require a GUI/macOS host. Read-only metric computation on a path
+        # the user just uploaded (chat uploads land in the temp dir, outside the
+        # workspace), so it is NOT fenced to allowed_dir — same trust model as the
+        # Adobe tools that read the same upload path.
+        try:
+            from syll.agent.tools.audio_inspect import AudioInspectTool
+            self.tools.register(AudioInspectTool())
+        except Exception as e:
+            logger.warning(f"AudioInspectTool registration failed: {e}")
+
         # Voice tool — only if TTS credentials are configured. Without
         # this guard the tool would surface in the LLM prompt even when
         # ``speak`` would immediately fail, wasting a turn.
@@ -234,6 +246,21 @@ class AgentLoop:
             )
             planner_tool._event_store = self.event_store
             self.tools.register(planner_tool)
+
+            # Adobe conversational tools (Photoshop cutout / Audition cleanup).
+            # They drive the real apps via the GUI tools above and verify the
+            # result deterministically. macOS + Adobe + Accessibility are
+            # enforced at call time by their preflight, not here.
+            from syll.agent.adobe.register import register_adobe_tools
+            register_adobe_tools(
+                self.tools,
+                agent_loop=self,
+                gui_config=self.gui_config,
+                syll_config=self.syll_config,
+                workspace=self.workspace,
+                skill_store=aloha_skill_store,
+                event_store=self.event_store,
+            )
 
     async def run(self) -> None:
         """Run the agent loop, processing messages from the bus."""

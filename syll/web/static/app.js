@@ -283,8 +283,7 @@
 
                 async init() {
                     // Restore theme from localStorage
-                    const saved = localStorage.getItem('syll-theme')
-                        ?? localStorage.getItem('nanobot-theme');
+                    const saved = localStorage.getItem('syll-theme');
                     if (saved === 'light') {
                         this.darkMode = false;
                         document.documentElement.setAttribute('data-theme', 'light');
@@ -325,8 +324,7 @@
 
                     // Restore last 3 dashboard intents
                     try {
-                        const h = localStorage.getItem('syll-intent-history')
-                            ?? localStorage.getItem('nanobot-intent-history');
+                        const h = localStorage.getItem('syll-intent-history');
                         if (h) this.intentHistory = JSON.parse(h) || [];
                     } catch (e) {}
                     // Global shortcuts: ⌘. toggle dashboard, ⌘M mic
@@ -4014,13 +4012,9 @@
                 ],
 
                 syllInit() {
-                    const savedVis = localStorage.getItem('syll-syll-visible')
-                        ?? localStorage.getItem('nanobot-syll-visible')
-                        ?? localStorage.getItem('nanobot-ghost-visible');
+                    const savedVis = localStorage.getItem('syll-syll-visible');
                     if (savedVis === 'false') this.syllVisible = false;
-                    const savedPos = localStorage.getItem('syll-syll-pos')
-                        ?? localStorage.getItem('nanobot-syll-pos')
-                        ?? localStorage.getItem('nanobot-ghost-pos');
+                    const savedPos = localStorage.getItem('syll-syll-pos');
                     if (savedPos) {
                         try {
                             const pos = JSON.parse(savedPos);
@@ -4216,9 +4210,7 @@
 
                     // Prefer last dragged position if the user moved it.
                     try {
-                        const saved = localStorage.getItem('syll-syll-panel-pos')
-                            ?? localStorage.getItem('nanobot-syll-panel-pos')
-                            ?? localStorage.getItem('nanobot-ghost-dashboard-pos');
+                        const saved = localStorage.getItem('syll-syll-panel-pos');
                         if (saved) {
                             const p = JSON.parse(saved);
                             if (Number.isFinite(p.x) && Number.isFinite(p.y)) {

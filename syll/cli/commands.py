@@ -85,28 +85,12 @@ def main(
 # ============================================================================
 
 
-def _print_legacy_migration_notice(migrated_path: Path) -> None:
-    """Print a one-time notice when ~/.nanobot/ was migrated to ~/.syll/."""
-    console.print(
-        f"[yellow]Migrated your workspace from ~/.nanobot/ to {migrated_path}.[/yellow]"
-    )
-    console.print(
-        "[dim]The old directory is kept as an automatic backup. Delete it when "
-        "you're sure everything works: rm -rf ~/.nanobot[/dim]"
-    )
-
-
 @app.command()
 def onboard():
     """Initialize Syll configuration and workspace."""
-    from syll.config.loader import get_config_path, migrate_legacy_workspace, save_config
+    from syll.config.loader import get_config_path, save_config
     from syll.config.schema import Config
     from syll.utils.helpers import get_workspace_path
-
-    # Non-destructive: copy ~/.nanobot → ~/.syll on first run if applicable
-    migrated = migrate_legacy_workspace()
-    if migrated is not None:
-        _print_legacy_migration_notice(migrated)
 
     config_path = get_config_path()
 
@@ -269,19 +253,13 @@ def wake(
     from syll.cli.startup_sml import StartupProfilerSml
 
     startup_sml = StartupProfilerSml.from_env()
-    from syll.config.loader import get_data_dir, load_config, migrate_legacy_workspace
+    from syll.config.loader import get_data_dir, load_config
 
     if verbose:
         import logging
         logging.basicConfig(level=logging.DEBUG)
 
     phase_sml = startup_sml.start_phase_sml()
-    # Non-destructive upgrade path: copy ~/.nanobot → ~/.syll if the new
-    # directory is missing. Runs before anything reads config.
-    _migrated = migrate_legacy_workspace()
-    if _migrated is not None:
-        _print_legacy_migration_notice(_migrated)
-
     config = load_config()
     host = host or config.gateway.host
     port = port or config.gateway.port
@@ -739,7 +717,7 @@ def web(
 
     from syll.agent.loop import AgentLoop
     from syll.bus.queue import MessageBus
-    from syll.config.loader import get_data_dir, load_config, migrate_legacy_workspace
+    from syll.config.loader import get_data_dir, load_config
     from syll.cron.service import CronService
     from syll.cron.types import CronJob
     from syll.providers.litellm_provider import LiteLLMProvider
@@ -748,12 +726,6 @@ def web(
     if verbose:
         import logging
         logging.basicConfig(level=logging.DEBUG)
-
-    # Non-destructive upgrade path: copy ~/.nanobot → ~/.syll if the new
-    # directory is missing. Runs before anything reads config.
-    _migrated = migrate_legacy_workspace()
-    if _migrated is not None:
-        _print_legacy_migration_notice(_migrated)
 
     config = load_config()
     _migrate_workspace_templates(config.workspace_path)

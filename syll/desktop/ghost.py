@@ -20,10 +20,6 @@ _HERE = Path(__file__).parent
 _HTML_PATH = _HERE / "ghost.html"
 _SVG_DIR = _HERE.parent / "web" / "static" / "ghost"
 _PREFS_PATH = Path.home() / ".syll" / "ghost_prefs.json"
-_LEGACY_PREF_PATHS = (
-    Path.home() / ".nanobot" / "syll_prefs.json",
-    Path.home() / ".nanobot" / "ghost_prefs.json",
-)
 
 SIZES = {"S": 70, "M": 90, "L": 120}
 DEFAULT_SIZE = "M"
@@ -554,7 +550,7 @@ class GhostWindow(QWidget):
             return json.loads(resp.read().decode("utf-8"))
 
     def _load_prefs(self) -> dict:
-        for path in (_PREFS_PATH, *_LEGACY_PREF_PATHS):
+        for path in (_PREFS_PATH,):
             try:
                 return json.loads(path.read_text())
             except Exception:

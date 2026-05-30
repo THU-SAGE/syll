@@ -6295,7 +6295,7 @@
                                 <textarea
                                     class="chat-input"
                                     x-model="inputMessage"
-                                    @keydown.enter.prevent="handleEnter"
+                                    @keydown.enter="handleEnter"
                                     @input="autoResizeTextarea($event)"
                                     placeholder="say something…"
                                     rows="1"
@@ -9132,7 +9132,7 @@ press save (or ⌘/ctrl + s) when you're done."></textarea>
                     x-ref="intentTextarea"
                     x-model="intentInput"
                     placeholder="Type your intent, or press the mic to speak…"
-                    @keydown.enter.prevent="if (!$event.shiftKey) sendIntent()"
+                    @keydown.enter="if (!$event.isComposing && $event.keyCode !== 229 && !$event.shiftKey) { $event.preventDefault(); sendIntent() }"
                     :disabled="intentPending || intentTranscribing"></textarea>
                 <div class="syll-panel-actions">
                     <button

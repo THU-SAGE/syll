@@ -12,6 +12,47 @@ from loguru import logger
 from syll.agent.tools.base import ToolResult
 from syll.web.skill_router import inject_skill_hint
 
+# Model prefixes for backends that authenticate without an explicit api_key
+# (cloud IAM, local servers, etc.). We must never short-circuit these.
+_KEYLESS_MODEL_PREFIXES = (
+    "bedrock/",
+    "ollama/",
+    "ollama_chat/",
+    "hosted_vllm/",
+    "vllm/",
+    "sagemaker/",
+    "vertex_ai/",
+    "local/",
+)
+
+_MISSING = object()
+
+
+def _needs_api_key(agent_loop) -> bool:
+    """Return True only when we're confident no usable API key is configured.
+
+    Conservative on purpose: a missing ``api_key`` attribute (custom providers,
+    test stubs) or a configured ``api_base`` (vLLM/Ollama/local endpoints) means
+    we cannot be sure, so we let the model loop run and surface the real error.
+    """
+    provider = getattr(agent_loop, "provider", None)
+    if provider is None:
+        return False
+
+    api_key = getattr(provider, "api_key", _MISSING)
+    if api_key is _MISSING or api_key:
+        return False
+
+    # Local/self-hosted endpoints authenticate via api_base, not a key.
+    if getattr(provider, "api_base", None):
+        return False
+
+    model = (getattr(agent_loop, "model", None) or "").lower()
+    if model.startswith(_KEYLESS_MODEL_PREFIXES):
+        return False
+
+    return True
+
 
 def _encode_media(media_paths: list[str]) -> list[dict[str, str]]:
     """Encode media file paths to base64 dicts for WebSocket transmission.
@@ -51,6 +92,16 @@ async def process_streaming(
       {"type": "error", "content": "error message"}
     """
     yield {"type": "status", "content": "thinking"}
+
+    if _needs_api_key(agent_loop):
+        yield {
+            "type": "error",
+            "content": (
+                "No API key configured yet — set models.chat in the "
+                "Pet tab → Config, or in ~/.syll/config.json."
+            ),
+        }
+        return
 
     try:
         # Build message and session (reuse agent_loop internals)
@@ -276,4 +327,13 @@ async def process_streaming(
 
     except Exception as e:
         logger.error(f"Streaming error: {e}")
+        if type(e).__name__ == "AuthenticationError":
+            yield {
+                "type": "error",
+                "content": (
+                    "No API key configured yet — set models.chat in the "
+                    "Pet tab → Config, or in ~/.syll/config.json."
+                ),
+            }
+            return
         yield {"type": "error", "content": str(e)}

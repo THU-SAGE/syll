@@ -168,7 +168,9 @@ class VoiceConfig(BaseModel):
 
 class GatewayConfig(BaseModel):
     """Gateway/server configuration."""
-    host: str = "0.0.0.0"
+    # Safe by default: bind to loopback only. Binding beyond loopback
+    # (e.g. "0.0.0.0") is an explicit opt-in via config or CLI flag.
+    host: str = "127.0.0.1"
     port: int = 18790
     allow_remote_admin: bool = False
     allow_origins: list[str] = Field(default_factory=list)
@@ -407,6 +409,6 @@ class Config(BaseSettings):
         return self.models.chat.api_base
 
     class Config:
-        env_prefix = "SYLL_"
+        env_prefix = "SYLL__"
         env_nested_delimiter = "__"
         extra = "ignore"

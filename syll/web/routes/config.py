@@ -3,6 +3,7 @@
 import copy
 import re
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
@@ -16,6 +17,22 @@ router = APIRouter(tags=["config"])
 
 # Fields whose values should be masked
 _SENSITIVE_KEYS = re.compile(r"(api_key|token|app_secret|encrypt_key)", re.IGNORECASE)
+
+# Fields whose values are URLs that may embed user:pass@ credentials
+_URL_KEYS = frozenset({"api_base", "proxy", "url", "bridge_url", "gateway_url", "api_url"})
+# Matches scheme://user:pass@host... so we can detect userinfo in arbitrary values
+_URL_USERINFO = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.\-]*://[^/@]*@", re.IGNORECASE)
+
+
+def _strip_url_userinfo(value: str) -> str:
+    """Strip any user:pass@ segment from a URL, keeping scheme/host/path intact."""
+    parts = urlsplit(value)
+    if not parts.netloc or (parts.username is None and parts.password is None):
+        return value
+    host = parts.hostname or ""
+    if parts.port is not None:
+        host = f"{host}:{parts.port}"
+    return urlunsplit((parts.scheme, host, parts.path, parts.query, parts.fragment))
 
 
 def _mask_sensitive(data: Any) -> Any:
@@ -32,6 +49,8 @@ def _mask_value(key: str, value: Any) -> Any:
         return _mask_sensitive(value)
     if isinstance(value, str) and _SENSITIVE_KEYS.search(key) and value:
         return f"...{value[-4:]}" if len(value) > 4 else "****"
+    if isinstance(value, str) and value and (key in _URL_KEYS or _URL_USERINFO.match(value)):
+        return _strip_url_userinfo(value)
     return value
 
 

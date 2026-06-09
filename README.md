@@ -31,7 +31,7 @@
     &nbsp;·&nbsp;
     <a href="https://thu-sage.github.io/syll/research.html">Research</a>
     &nbsp;·&nbsp;
-    <a href="docs/report/syll-report-v1.pdf">Paper</a>
+    <a href="https://arxiv.org/abs/2606.07594">Paper</a>
   </p>
 </div>
 
